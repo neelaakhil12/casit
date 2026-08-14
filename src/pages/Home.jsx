@@ -1,16 +1,20 @@
 import React, { useContext } from 'react';
 import { AppContext } from '../context/AppContext';
-import { categories } from '../data/products';
 import ProductCard from '../components/ProductCard';
 import { ShieldCheck, Truck, RotateCcw, Heart, ChevronRight, Award, UploadCloud } from 'lucide-react';
 
 export default function Home() {
-  const { products, navigateTo, setSelectedCategoryFilter } = useContext(AppContext);
+  const { products, categories, navigateTo, setSelectedCategoryFilter } = useContext(AppContext);
 
-  // Filter products by tag flags
-  const trendingPosters = products.filter(p => p.trending).slice(0, 4);
-  const bestSellers = products.filter(p => p.bestSeller).slice(0, 4);
-  const newArrivals = products.filter(p => p.newArrival).slice(0, 4);
+  // Filter products by admin checkboxes
+  const trendingFiltered = products.filter(p => p.trending || p.is_trending);
+  const trendingPosters = (trendingFiltered.length > 0 ? trendingFiltered : products).slice(0, 4);
+
+  const bestSellersFiltered = products.filter(p => p.bestSeller || p.is_best_seller);
+  const bestSellers = (bestSellersFiltered.length > 0 ? bestSellersFiltered : products).slice(0, 4);
+
+  const newArrivalsFiltered = products.filter(p => p.newArrival || p.is_new_arrival);
+  const newArrivals = (newArrivalsFiltered.length > 0 ? newArrivalsFiltered : products).slice(0, 4);
   const framedPosters = products.filter(p => p.category === 'framed' || p.id === 12);
 
   const handleCategoryClick = (categoryId) => {

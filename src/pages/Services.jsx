@@ -37,8 +37,6 @@ function ServicePosterCard({ poster }) {
       price = Math.round(poster.basePrice * 1.5) + 100;
     } else if (selectedSize === 'A3') {
       price = Math.round(poster.basePrice * 2.2) + 250;
-    } else if (selectedSize === 'Split Poster') {
-      price = Math.round(poster.basePrice * 4.5) + 650;
     }
 
     if (isFramed) {

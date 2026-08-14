@@ -1,17 +1,19 @@
 import React, { useContext, useState } from 'react';
 import { AppContext } from '../context/AppContext';
-import { categories, sizes } from '../data/products';
+import { sizes } from '../data/products';
 import ProductCard from '../components/ProductCard';
 import { Search, SlidersHorizontal, Upload, FileImage, ShieldCheck } from 'lucide-react';
 
 export default function Categories() {
   const { 
     products, 
+    categories,
     searchQuery, 
     setSearchQuery, 
     selectedCategoryFilter, 
     setSelectedCategoryFilter,
-    addToCart
+    addToCart,
+    viewProductDetails
   } = useContext(AppContext);
 
   const [sortOption, setSortOption] = useState('featured');
@@ -22,7 +24,14 @@ export default function Categories() {
 
   // Filter products by selected category and search query
   const filteredProducts = products.filter(product => {
-    const matchesCategory = selectedCategoryFilter === 'all' || product.category === selectedCategoryFilter;
+    if (selectedCategoryFilter === 'all') {
+      // Hide custom products from the 'All Products' grid so it doesn't look like a standard product
+      if (product.category === 'customized-posters') return false;
+      return product.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+             product.description.toLowerCase().includes(searchQuery.toLowerCase());
+    }
+    
+    const matchesCategory = product.category === selectedCategoryFilter;
     const matchesSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
                           product.description.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesCategory && matchesSearch;
@@ -155,7 +164,30 @@ export default function Categories() {
 
       {/* Main Grid Section */}
       <div data-aos="fade-up">
-        {sortedProducts.length > 0 ? (
+        {selectedCategoryFilter === 'customized-posters' ? (
+          <div className="bg-primary/10 border-2 border-dashed border-primary rounded-3xl p-10 sm:p-20 text-center space-y-6">
+             <div className="w-20 h-20 bg-primary/20 rounded-full flex items-center justify-center text-primary mx-auto">
+               <Upload size={40} />
+             </div>
+             <h3 className="text-2xl sm:text-3xl font-black text-gray-900">Create Your Custom Poster</h3>
+             <p className="text-sm text-gray-600 max-w-md mx-auto">
+               Upload your favorite photo, design, or artwork, and we will print and frame it in stunning high definition.
+             </p>
+             
+             <button 
+               onClick={() => {
+                 const customProd = products.find(p => p.category === 'customized-posters');
+                 if (customProd) {
+                   viewProductDetails(customProd.id);
+                 }
+               }}
+               className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-black text-white font-bold rounded-2xl hover:bg-neutral-800 transition shadow-xl"
+             >
+               <Upload size={20} />
+               <span>Start Customizing</span>
+             </button>
+          </div>
+        ) : sortedProducts.length > 0 ? (
           <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-8">
             {sortedProducts.map((product) => (
               <ProductCard key={product.id} product={product} />

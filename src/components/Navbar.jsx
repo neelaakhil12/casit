@@ -129,11 +129,19 @@ export default function Navbar() {
 
             {/* User Login status */}
             {user.loggedIn ? (
-              <div className="flex items-center gap-3 bg-gray-50 border border-gray-100 rounded-full pl-3 pr-2 py-1">
-                <span className="text-xs font-semibold text-gray-700 max-w-[80px] truncate">{user.email.split('@')[0]}</span>
+              <div className="flex items-center gap-2 bg-gray-50 border border-gray-100 rounded-full p-1 pl-3">
+                <button 
+                  onClick={() => handleNavClick('profile')}
+                  className="flex items-center gap-2 hover:opacity-80 transition cursor-pointer"
+                >
+                  <User size={14} className="text-black" />
+                  <span className="text-xs font-bold text-gray-800 max-w-[100px] truncate">
+                    {user.name || user.email.split('@')[0]}
+                  </span>
+                </button>
                 <button 
                   onClick={logoutUser}
-                  className="p-1.5 bg-black text-white hover:bg-neutral-800 rounded-full transition"
+                  className="p-1.5 bg-black text-white hover:bg-neutral-800 rounded-full transition ml-1"
                   title="Logout"
                 >
                   <LogOut size={14} />

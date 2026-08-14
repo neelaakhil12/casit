@@ -9,7 +9,8 @@ export default function Cart() {
     removeFromCart, 
     navigateTo, 
     user, 
-    setLoginModalOpen 
+    setLoginModalOpen,
+    placeOrder 
   } = useContext(AppContext);
 
   const [couponCode, setCouponCode] = useState('');
@@ -18,24 +19,23 @@ export default function Cart() {
   const [checkoutComplete, setCheckoutComplete] = useState(false);
 
   // Subtotal calculations
-  const subtotal = cart.reduce((total, item) => total + (item.price * item.quantity), 0);
+  const subtotal = cart.reduce((acc, item) => acc + (item.price * item.quantity), 0);
   
   // Delivery Charge rule: Free delivery above 999, else 99
-  const deliveryCharge = (subtotal === 0 || subtotal >= 999) ? 0 : 99;
+  const deliveryCharge = subtotal > 499 || subtotal === 0 ? 0 : 70;
 
   // Coupon apply
   const handleApplyCoupon = (e) => {
     e.preventDefault();
-    const normalizedCode = couponCode.trim().toUpperCase();
-    if (normalizedCode === 'CASIT10') {
-      setDiscountPercent(0.10); // 10% discount
-      setCouponStatus({ active: true, error: '', successMsg: 'CASIT10 code applied! (10% Off)' });
-    } else if (normalizedCode === 'WELCOME20') {
-      setDiscountPercent(0.20); // 20% discount
-      setCouponStatus({ active: true, error: '', successMsg: 'WELCOME20 code applied! (20% Off)' });
+    const code = couponCode.trim().toUpperCase();
+    if (code === 'CASIT10' || code === 'WELCOME10') {
+      setDiscountPercent(0.10);
+      setCouponStatus({ active: true, error: '', successMsg: '10% Discount Coupon Applied!' });
+    } else if (code === 'CASIT20') {
+      setDiscountPercent(0.20);
+      setCouponStatus({ active: true, error: '', successMsg: '20% Mega Savings Coupon Applied!' });
     } else {
-      setDiscountPercent(0);
-      setCouponStatus({ active: false, error: 'Invalid coupon code. Try WELCOME20 or CASIT10.', successMsg: '' });
+      setCouponStatus({ active: false, error: 'Invalid coupon code. Try CASIT10', successMsg: '' });
     }
   };
 
@@ -47,6 +47,22 @@ export default function Cart() {
       setLoginModalOpen(true);
       return;
     }
+
+    // Record Order in User Profile
+    placeOrder({
+      totalAmount,
+      items: cart.map(item => ({
+        name: item.product.name,
+        image: item.customImageUrl || item.product.image,
+        size: item.size,
+        wantsPoster: item.wantsPoster,
+        wantsFrame: item.wantsFrame,
+        frameStyle: item.frameStyle,
+        quantity: item.quantity,
+        price: item.price
+      }))
+    });
+
     setCheckoutComplete(true);
     // Clear cart after short delay
     setTimeout(() => {
@@ -62,9 +78,15 @@ export default function Cart() {
         </div>
         <h2 className="text-3xl font-black text-gray-900">Order Placed Successfully!</h2>
         <p className="text-sm text-gray-500 leading-relaxed max-w-md mx-auto">
-          Thank you for shopping with CASIT. We have received your order and our printing lab will begin customizing your posters shortly. A confirmation details link has been sent to your email.
+          Thank you for shopping with CASIT. Your order has been placed under <strong>{user.email}</strong>. You can view your order history and download your PDF invoice anytime in your account profile.
         </p>
-        <div className="pt-4">
+        <div className="flex justify-center gap-4 pt-4">
+          <button 
+            onClick={() => { setCheckoutComplete(false); navigateTo('profile'); }}
+            className="px-6 py-3 bg-black text-white font-bold text-xs rounded-full hover:bg-neutral-800 transition"
+          >
+            View Orders & Download Invoice
+          </button>
           <button 
             onClick={() => { setCheckoutComplete(false); navigateTo('home'); }}
             className="btn-primary text-xs"
@@ -99,17 +121,32 @@ export default function Cart() {
                 <div className="flex flex-col sm:flex-row items-center gap-4 w-full sm:w-auto">
                   <div className="w-20 h-24 rounded-2xl bg-gray-50 overflow-hidden shrink-0 border border-gray-100">
                     <img 
-                      src={item.product.image} 
-                      alt={item.product.name}
+                      src={item.customImageUrl || item.product.image} 
+                      alt={item.product.name} 
                       className="w-full h-full object-cover"
                     />
                   </div>
                   <div className="space-y-1 text-center sm:text-left">
                     <h3 className="text-sm font-bold text-gray-900 line-clamp-1">{item.product.name}</h3>
-                    <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 text-[10px] text-gray-500 font-semibold uppercase">
-                      <span>Size: {item.size}</span>
-                      <span className="text-gray-300">•</span>
-                      <span>Frame: {item.framed ? 'Yes' : 'No'}</span>
+                    {item.customImageUrl && (
+                      <span className="inline-block px-2 py-0.5 bg-primary/20 text-yellow-800 text-[10px] font-bold rounded-full">
+                        Custom Upload
+                      </span>
+                    )}
+                    <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 text-[10px] font-semibold text-gray-600">
+                      {item.wantsPoster && item.wantsFrame ? (
+                        <span className="px-2 py-0.5 bg-gray-100 rounded-md text-gray-800 font-bold">
+                          Poster + Frame ({item.size}) • {item.frameStyle || 'Black Frame'}
+                        </span>
+                      ) : item.wantsPoster ? (
+                        <span className="px-2 py-0.5 bg-gray-100 rounded-md text-gray-800 font-bold">
+                          Poster Only ({item.size})
+                        </span>
+                      ) : (
+                        <span className="px-2 py-0.5 bg-gray-100 rounded-md text-gray-800 font-bold">
+                          Frame Only ({item.size}) • {item.frameStyle || 'Black Frame'}
+                        </span>
+                      )}
                     </div>
                     <span className="text-xs font-bold text-gray-900 block sm:hidden pt-1">₹{item.price} each</span>
                   </div>

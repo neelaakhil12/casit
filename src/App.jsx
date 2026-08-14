@@ -12,6 +12,10 @@ import Services from './pages/Services';
 import About from './pages/About';
 import AOS from 'aos';
 import 'aos/dist/aos.css';
+import AdminApp from './admin/AdminApp';
+
+import Profile from './pages/Profile';
+import ProfileSetupModal from './components/ProfileSetupModal';
 
 function MainApp() {
   const { activePage } = useContext(AppContext);
@@ -49,6 +53,8 @@ function MainApp() {
         return <Services />;
       case 'about':
         return <About />;
+      case 'profile':
+        return <Profile />;
       default:
         return <Home />;
     }
@@ -69,11 +75,17 @@ function MainApp() {
 
       {/* Global Modals */}
       <LoginModal />
+      <ProfileSetupModal />
     </div>
   );
 }
 
 export default function App() {
+  // Simple check for admin route to completely separate logic and avoid context overhead
+  if (window.location.pathname.startsWith('/admin')) {
+    return <AdminApp />;
+  }
+
   return (
     <AppProvider>
       <MainApp />

@@ -7,14 +7,15 @@ export const categories = [
   { id: 'spiritual', name: 'Spiritual', description: 'God, temples, meditation, and spiritual artwork.', image: '/categories/spiritual.png' },
   { id: 'sports', name: 'Sports', description: 'Football, Cricket, Formula 1, Basketball, and other sports posters.', image: '/categories/sports.png' },
   { id: 'polaroids', name: 'Polaroids', description: 'Vintage polaroid-style photo prints.', image: '/categories/polaroids.png' },
-  { id: 'framed', name: 'Framed Posters', description: 'Premium framed wall posters available in multiple sizes.', image: '/categories/framed.png' }
+  { id: 'framed', name: 'Framed Posters', description: 'Premium framed wall posters available in multiple sizes.', image: '/categories/framed.png' },
+  { id: 'customized-posters', name: 'Customized Posters', description: 'Upload your own image and we will print and frame it for you.', image: 'https://images.unsplash.com/photo-1513519245088-0e12902e5a38?q=80&w=600&auto=format&fit=crop' }
 ];
 
 export const sizes = [
   { code: 'A6', label: 'A6 (Mini - 4.1 x 5.8 in)', priceMultiplier: 1.0, basePriceOffset: 0 },
+  { code: 'A5', label: 'A5 (Small - 5.8 x 8.3 in)', priceMultiplier: 1.2, basePriceOffset: 50 },
   { code: 'A4', label: 'A4 (Standard - 8.3 x 11.7 in)', priceMultiplier: 1.5, basePriceOffset: 100 },
-  { code: 'A3', label: 'A3 (Large - 11.7 x 16.5 in)', priceMultiplier: 2.2, basePriceOffset: 250 },
-  { code: 'Split Poster', label: 'Split Poster (Set of 3 - A3 size)', priceMultiplier: 4.5, basePriceOffset: 650 }
+  { code: 'A3', label: 'A3 (Large - 11.7 x 16.5 in)', priceMultiplier: 2.2, basePriceOffset: 250 }
 ];
 
 export const products = [
@@ -264,6 +265,25 @@ export const products = [
     trending: true,
     bestSeller: true,
     newArrival: false
+  },
+  {
+    id: 'custom-1',
+    name: 'Print Your Own Custom Poster',
+    category: 'customized-posters',
+    basePrice: 499,
+    rating: 5.0,
+    reviewsCount: 342,
+    image: 'https://images.unsplash.com/photo-1544377193-33dcf4d68fb5?q=80&w=600&auto=format&fit=crop',
+    description: 'Upload your favorite photo, design, or artwork, and we will print it in stunning high definition! Perfect for personalized gifts or unique room decor.',
+    specs: {
+      paper: '300 GSM Premium Matte Paper',
+      printing: 'Ultra-HD Pigment Print',
+      finish: 'Satin Smooth Finish',
+      packaging: 'Heavy-duty Cardboard Tube'
+    },
+    trending: true,
+    bestSeller: true,
+    newArrival: true
   }
 ];
 

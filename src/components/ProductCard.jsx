@@ -6,6 +6,7 @@ import { sizes } from '../data/products';
 export default function ProductCard({ product }) {
   const { wishlist, toggleWishlist, addToCart, viewProductDetails } = useContext(AppContext);
   const [selectedSize, setSelectedSize] = useState('A4');
+  const [productFormat, setProductFormat] = useState('poster'); // 'poster', 'both', 'frame'
   const [addedToast, setAddedToast] = useState(false);
 
   const isWishlisted = wishlist.includes(product.id);
@@ -15,27 +16,88 @@ export default function ProductCard({ product }) {
     toggleWishlist(product.id);
   };
 
-  // Dynamic price calculation based on selected size
+  // Dynamic price calculation based on selected size & format option
   const getCalculatedPrice = () => {
-    let price = product.basePrice;
-    if (selectedSize === 'A6') {
-      price = product.basePrice * 1.0;
-    } else if (selectedSize === 'A4') {
-      price = Math.round(product.basePrice * 1.5) + 100;
-    } else if (selectedSize === 'A3') {
-      price = Math.round(product.basePrice * 2.2) + 250;
-    } else if (selectedSize === 'Split Poster') {
-      price = Math.round(product.basePrice * 4.5) + 650;
+    const matrix = product.sizePrices || product.size_prices;
+    const formatKey = productFormat === 'both' ? 'posterFrame' : productFormat;
+    const sizeKey = selectedSize;
+
+    if (matrix && matrix[formatKey] && matrix[formatKey][sizeKey] && parseFloat(matrix[formatKey][sizeKey]) > 0) {
+      return parseFloat(matrix[formatKey][sizeKey]);
     }
-    return price;
+
+    const baseP = parseFloat(product.basePrice) || 0;
+    const frameP = parseFloat(product.framePrice) || 400;
+
+    let targetPrice = 0;
+    if (productFormat === 'poster') {
+      targetPrice = baseP;
+    } else if (productFormat === 'frame') {
+      targetPrice = frameP;
+    } else if (productFormat === 'both') {
+      targetPrice = product.posterFramePrice ? parseFloat(product.posterFramePrice) : (baseP + frameP);
+    }
+
+    let sizeAddon = 0;
+    if (selectedSize === 'A6') {
+      sizeAddon = -Math.round(targetPrice * 0.3);
+    } else if (selectedSize === 'A4') {
+      sizeAddon = 0; // Exact base price
+    } else if (selectedSize === 'A3') {
+      sizeAddon = product.a3ExtraPrice !== undefined ? product.a3ExtraPrice : 150;
+    }
+
+    return Math.max(0, Math.round(targetPrice + sizeAddon));
   };
 
   const handleAddToCart = (e) => {
     e.stopPropagation();
-    addToCart(product, selectedSize, false, 1);
+    const wantsPoster = productFormat === 'poster' || productFormat === 'both';
+    const wantsFrame = productFormat === 'frame' || productFormat === 'both';
+    addToCart(product, selectedSize, wantsPoster, wantsFrame, 1);
     setAddedToast(true);
     setTimeout(() => setAddedToast(false), 2200);
   };
+
+  // Dynamically compute available sizes for this product card
+  const availableSizesList = (() => {
+    const matrix = product?.sizePrices || product?.size_prices;
+    const baseList = [
+      { code: 'A6', label: 'A6' },
+      { code: 'A5', label: 'A5' },
+      { code: 'A4', label: 'A4' },
+      { code: 'A3', label: 'A3' }
+    ];
+
+    if (!matrix) return baseList;
+
+    const customKeys = new Set();
+    ['poster', 'frame', 'posterFrame'].forEach(fmt => {
+      if (matrix[fmt]) {
+        Object.keys(matrix[fmt]).forEach(k => {
+          if (matrix[fmt][k] && parseFloat(matrix[fmt][k]) > 0 && k !== 'Split' && k !== 'Split Poster') {
+            customKeys.add(k);
+          }
+        });
+      }
+    });
+
+    if (customKeys.size === 0) return baseList;
+
+    const result = [];
+    baseList.forEach(item => {
+      if (customKeys.has(item.code)) {
+        result.push(item);
+        customKeys.delete(item.code);
+      }
+    });
+
+    customKeys.forEach(customCode => {
+      result.push({ code: customCode, label: customCode });
+    });
+
+    return result.length > 0 ? result : baseList;
+  })();
 
   const formattedCategory = product.category
     .split('-')
@@ -97,22 +159,36 @@ export default function ProductCard({ product }) {
           </p>
         </div>
 
-        {/* Size Selection Dropdown */}
-        <div className="pt-2 border-t border-gray-100 mt-2 space-y-1" onClick={(e) => e.stopPropagation()}>
-          <div className="flex items-center justify-between">
-            <label className="text-[10px] font-bold uppercase tracking-wider text-gray-500">Size</label>
+        {/* Option Dropdowns: Size & Format (Posters / Frames / Both) */}
+        <div className="pt-2 border-t border-gray-100 mt-2 space-y-1.5" onClick={(e) => e.stopPropagation()}>
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="text-[9px] font-bold uppercase tracking-wider text-gray-500 block mb-0.5">Size</label>
+              <select
+                value={selectedSize}
+                onChange={(e) => setSelectedSize(e.target.value)}
+                className="w-full text-[11px] font-bold bg-gray-50 border border-gray-200 rounded-lg px-1.5 py-1 text-gray-800 focus:outline-none focus:border-black cursor-pointer"
+              >
+                {availableSizesList.map((s) => (
+                  <option key={s.code} value={s.code}>
+                    {s.label || s.code}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="text-[9px] font-bold uppercase tracking-wider text-gray-500 block mb-0.5">Type</label>
+              <select
+                value={productFormat}
+                onChange={(e) => setProductFormat(e.target.value)}
+                className="w-full text-[11px] font-bold bg-gray-50 border border-gray-200 rounded-lg px-1.5 py-1 text-gray-800 focus:outline-none focus:border-black cursor-pointer"
+              >
+                <option value="poster">Poster Only</option>
+                <option value="both">Poster + Frame</option>
+                <option value="frame">Frame Only</option>
+              </select>
+            </div>
           </div>
-          <select
-            value={selectedSize}
-            onChange={(e) => setSelectedSize(e.target.value)}
-            className="w-full text-xs font-bold bg-gray-50 border border-gray-200 rounded-xl px-2 py-1.5 text-gray-800 focus:outline-none focus:border-black cursor-pointer"
-          >
-            {sizes.map((s) => (
-              <option key={s.code} value={s.code}>
-                {s.code}
-              </option>
-            ))}
-          </select>
         </div>
 
         {/* Pricing & Add to Cart Action */}
