@@ -9,7 +9,6 @@ import {
   ChevronUp,
   Image as ImageIcon,
   Layers,
-  RotateCcw,
   CheckCircle2,
   AlertCircle,
   Sparkles,
@@ -20,13 +19,13 @@ import {
   Copy,
   Save,
   Check,
-  Shield
+  Shield,
+  Upload
 } from 'lucide-react';
 import { uploadImageToCloudinary } from '../lib/cloudinary';
 import {
   getHubProducts,
   saveHubProducts,
-  resetHubProducts,
   defaultHubProducts,
   DEFAULT_FRAME_STYLES
 } from '../../data/customPrints';
@@ -55,7 +54,14 @@ const emptyProduct = () => ({
 });
 
 export default function ManageCustomPrints() {
-  const [products, setProducts] = useState(getHubProducts());
+  const [products, setProducts] = useState(() => {
+    try {
+      return getHubProducts();
+    } catch (_) {
+      return defaultHubProducts;
+    }
+  });
+
   const [modalOpen, setModalOpen] = useState(false);
   const [editingIdx, setEditingIdx] = useState(null); // null = add new
   const [form, setForm] = useState(null);
@@ -63,9 +69,22 @@ export default function ManageCustomPrints() {
   const [uploading, setUploading] = useState(false);
   const [successMsg, setSuccessMsg] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
-  const [expandedSection, setExpandedSection] = useState('basic'); // 'basic' | 'sizes' | 'framing'
+  const [expandedSection, setExpandedSection] = useState('basic'); // 'basic' | 'sizes'
   const [previewCard, setPreviewCard] = useState(null);
-  const [newFrameStyleInput, setNewFrameStyleInput] = useState('');
+
+  // Sync on mount or storage change
+  useEffect(() => {
+    try {
+      setProducts(getHubProducts());
+    } catch (_) {}
+    const onStorage = () => {
+      try {
+        setProducts(getHubProducts());
+      } catch (_) {}
+    };
+    window.addEventListener('storage', onStorage);
+    return () => window.removeEventListener('storage', onStorage);
+  }, []);
 
   // Persist products whenever they change
   const persist = (updated) => {
@@ -85,43 +104,55 @@ export default function ManageCustomPrints() {
   };
 
   const openEdit = (idx) => {
-    const item = products[idx] || defaultHubProducts[0];
-    const rawSizes = Array.isArray(item.defaultSizes) && item.defaultSizes.length > 0
-      ? item.defaultSizes
-      : (Array.isArray(item.sizes) ? item.sizes : [{ code: 'A4', label: 'A4', dimensions: '8.3 x 11.7 in', basePrice: 129, framePrice: 250, imageCount: 1 }]);
-    
-    const safeSizes = rawSizes.map(s => ({
-      code: s.code || s.name || 'A4',
-      label: s.label || s.name || 'A4',
-      dimensions: s.dimensions || '',
-      basePrice: Number(s.basePrice || s.price || 129),
-      framePrice: Number(s.framePrice !== undefined ? s.framePrice : (item.framePrice || 250)),
-      imageCount: Number(s.imageCount || item.imageCount || 1)
-    }));
+    try {
+      const item = (products && products[idx]) || defaultHubProducts[0];
+      const rawSizes = Array.isArray(item.defaultSizes) && item.defaultSizes.length > 0
+        ? item.defaultSizes
+        : (Array.isArray(item.sizes) ? item.sizes : defaultHubProducts[0].defaultSizes);
+      
+      const safeSizes = rawSizes.map(s => ({
+        code: s.code || s.name || 'A4',
+        label: s.label || s.name || 'A4',
+        dimensions: s.dimensions || '',
+        basePrice: Number(s.basePrice || s.price || 129),
+        framePrice: Number(s.framePrice !== undefined ? s.framePrice : (item.framePrice || 250)),
+        imageCount: Number(s.imageCount || item.imageCount || 1)
+      }));
 
-    setForm({
-      ...item,
-      defaultSizes: safeSizes,
-      imageCount: Number(item.imageCount || 1),
-      allowFraming: item.allowFraming !== false,
-      allowFrameOnly: item.allowFrameOnly !== false,
-      framePrice: Number(item.framePrice || 250),
-      frameBadge: item.frameBadge || 'Acrylic Shield',
-      frameStyles: Array.isArray(item.frameStyles) && item.frameStyles.length > 0 ? [...item.frameStyles] : [...DEFAULT_FRAME_STYLES]
-    });
-    setEditingIdx(idx);
-    setImageFile(null);
-    setErrorMsg('');
-    setSuccessMsg('');
-    setExpandedSection('basic');
-    setModalOpen(true);
+      setForm({
+        ...item,
+        titleScript: item.titleScript || 'Custom',
+        titleMain: item.titleMain || 'POSTER',
+        subtitle: item.subtitle || '',
+        buttonText: item.buttonText || 'Get Yours →',
+        badge: item.badge || 'New Style',
+        typeLabel: item.typeLabel || 'Single Wall Poster',
+        image: item.image || '',
+        extraTag: item.extraTag || '',
+        defaultSizes: safeSizes,
+        imageCount: Number(item.imageCount || 1),
+        allowFraming: item.allowFraming !== false,
+        allowFrameOnly: item.allowFrameOnly !== false,
+        framePrice: Number(item.framePrice || 250),
+        frameBadge: item.frameBadge || 'Acrylic Shield',
+        frameStyles: Array.isArray(item.frameStyles) && item.frameStyles.length > 0 ? [...item.frameStyles] : [...DEFAULT_FRAME_STYLES]
+      });
+      setEditingIdx(idx);
+      setImageFile(null);
+      setErrorMsg('');
+      setSuccessMsg('');
+      setExpandedSection('basic');
+      setModalOpen(true);
+    } catch (err) {
+      console.error('Error in openEdit:', err);
+    }
   };
 
   const handleDelete = (idx) => {
-    if (!window.confirm(`Delete "${products[idx].titleMain}"? This removes it from the Design Your Own page.`)) return;
+    if (!window.confirm(`Delete "${products[idx]?.titleMain}"? This removes it from the Design Your Own page.`)) return;
     const updated = products.filter((_, i) => i !== idx);
     persist(updated);
-    setSuccessMsg(`"${products[idx].titleMain}" deleted.`);
+    setSuccessMsg(`"${products[idx]?.titleMain || 'Print'}" deleted.`);
     setTimeout(() => setSuccessMsg(''), 3000);
   };
 
@@ -129,11 +160,11 @@ export default function ManageCustomPrints() {
     const copy = {
       ...JSON.parse(JSON.stringify(products[idx])),
       id: `custom-${Date.now()}`,
-      titleMain: products[idx].titleMain + ' (Copy)'
+      titleMain: (products[idx]?.titleMain || 'PRINT') + ' (Copy)'
     };
     const updated = [...products.slice(0, idx + 1), copy, ...products.slice(idx + 1)];
     persist(updated);
-    setSuccessMsg(`Duplicated "${products[idx].titleMain}".`);
+    setSuccessMsg(`Duplicated "${products[idx]?.titleMain}".`);
     setTimeout(() => setSuccessMsg(''), 3000);
   };
 
@@ -169,50 +200,24 @@ export default function ManageCustomPrints() {
   // Size row helpers
   const addSize = () => setForm(f => ({
     ...f,
-    defaultSizes: [...f.defaultSizes, { code: `S${Date.now()}`, label: 'New Size', dimensions: '', basePrice: 199, framePrice: 250 }]
+    defaultSizes: [...(f?.defaultSizes || []), { code: `S${Date.now()}`, label: 'New Size', dimensions: '', basePrice: 199, framePrice: 250, imageCount: f?.imageCount || 1 }]
   }));
+
   const updateSize = (i, key, val) => setForm(f => {
-    const s = [...f.defaultSizes];
-    s[i] = { ...s[i], [key]: key === 'basePrice' || key === 'framePrice' ? Number(val) : val };
+    const s = [...(f?.defaultSizes || [])];
+    s[i] = { ...s[i], [key]: key === 'basePrice' || key === 'framePrice' || key === 'imageCount' ? Number(val) : val };
     return { ...f, defaultSizes: s };
   });
+
   const removeSize = (i) => setForm(f => ({
     ...f,
-    defaultSizes: f.defaultSizes.filter((_, idx) => idx !== i)
+    defaultSizes: (f?.defaultSizes || []).filter((_, idx) => idx !== i)
   }));
-
-  // Framing style helpers
-  const toggleFrameStyle = (styleName) => {
-    setForm(f => {
-      const current = f.frameStyles || [];
-      const exists = current.includes(styleName);
-      const updated = exists ? current.filter(s => s !== styleName) : [...current, styleName];
-      return { ...f, frameStyles: updated };
-    });
-  };
-
-  const addCustomFrameStyle = () => {
-    if (!newFrameStyleInput.trim()) return;
-    const styleName = newFrameStyleInput.trim();
-    setForm(f => {
-      const current = f.frameStyles || [];
-      if (current.includes(styleName)) return f;
-      return { ...f, frameStyles: [...current, styleName] };
-    });
-    setNewFrameStyleInput('');
-  };
-
-  const removeFrameStyle = (styleName) => {
-    setForm(f => ({
-      ...f,
-      frameStyles: (f.frameStyles || []).filter(s => s !== styleName)
-    }));
-  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!form.titleMain.trim()) { setErrorMsg('Title is required.'); return; }
-    if (form.defaultSizes.length === 0) { setErrorMsg('Add at least one size option.'); return; }
+    if (!form?.titleMain?.trim()) { setErrorMsg('Title is required.'); return; }
+    if (!form?.defaultSizes || form.defaultSizes.length === 0) { setErrorMsg('Add at least one size option.'); return; }
 
     setUploading(true);
     setErrorMsg('');
@@ -230,10 +235,12 @@ export default function ManageCustomPrints() {
       const updatedProduct = {
         ...form,
         image: finalImage,
-        allowFraming: !!form.allowFraming,
-        framePrice: Number(form.framePrice) || 0,
-        frameBadge: form.frameBadge || '',
-        frameStyles: form.frameStyles || []
+        imageCount: Number(form.imageCount) || 1,
+        allowFraming: form.allowFraming !== false,
+        allowFrameOnly: form.allowFrameOnly !== false,
+        framePrice: Number(form.framePrice) || 250,
+        frameBadge: form.frameBadge || 'Acrylic Shield',
+        frameStyles: Array.isArray(form.frameStyles) && form.frameStyles.length > 0 ? form.frameStyles : [...DEFAULT_FRAME_STYLES]
       };
 
       let updatedList;
@@ -266,7 +273,7 @@ export default function ManageCustomPrints() {
             </span>
             <div>
               <h1 className="text-2xl font-black text-gray-900">Custom Prints & Frames</h1>
-              <p className="text-xs text-gray-500 font-medium">Manage items shown on the "Design Your Own Prints" page, sizes, pricing, and framing options</p>
+              <p className="text-xs text-gray-500 font-medium">Manage items shown on the "Design Your Own Prints" page, sizes, pricing, and upload options</p>
             </div>
           </div>
         </div>
@@ -291,7 +298,7 @@ export default function ManageCustomPrints() {
 
       {/* ─── CARDS GRID ─── */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {products.map((item, idx) => (
+        {(Array.isArray(products) ? products : []).map((item, idx) => (
           <div
             key={item.id || idx}
             className="bg-white rounded-3xl border border-gray-200 shadow-sm hover:shadow-md transition-all overflow-hidden flex flex-col group"
@@ -363,7 +370,7 @@ export default function ManageCustomPrints() {
             <div className="p-5 flex-1 flex flex-col justify-between space-y-4">
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-black text-gray-900">{item.typeLabel}</span>
+                  <span className="text-xs font-black text-gray-900">{item.typeLabel || 'Custom Print'}</span>
                   <span className="text-[11px] font-bold text-gray-500">
                     {item.defaultSizes?.length || 0} Size{item.defaultSizes?.length === 1 ? '' : 's'}
                   </span>
@@ -372,7 +379,7 @@ export default function ManageCustomPrints() {
 
                 {/* Sizes Pill preview */}
                 <div className="flex flex-wrap gap-1.5 pt-1">
-                  {item.defaultSizes?.map((sz, i) => (
+                  {(item.defaultSizes || []).map((sz, i) => (
                     <span key={i} className="text-[10px] font-bold bg-gray-100 text-gray-700 px-2 py-0.5 rounded-lg">
                       {sz.label}: ₹{sz.basePrice}
                     </span>
@@ -617,7 +624,9 @@ export default function ManageCustomPrints() {
                   <div className="space-y-4">
                     <div className="flex items-center justify-between">
                       <div>
-                        <h4 className="text-xs font-extrabold text-gray-800">Size Options & Base Prices ({form.defaultSizes.length})</h4>
+                        <h4 className="text-xs font-extrabold text-gray-800">
+                          Size Options & Base Prices ({(form?.defaultSizes || []).length})
+                        </h4>
                         <p className="text-[10px] text-gray-500">Each size has its own poster price and image upload count.</p>
                       </div>
                       <button
@@ -629,14 +638,14 @@ export default function ManageCustomPrints() {
                       </button>
                     </div>
 
-                    {form.defaultSizes.length === 0 && (
+                    {(form?.defaultSizes || []).length === 0 && (
                       <p className="text-xs text-gray-400 text-center py-4">No sizes yet. Click "Add Size" to start.</p>
                     )}
 
                     <div className="space-y-3">
-                      {form.defaultSizes.map((size, i) => {
+                      {(form?.defaultSizes || []).map((size, i) => {
                         const posterP = Number(size.basePrice) || 0;
-                        const imgCount = Number(size.imageCount ?? form.imageCount ?? 1);
+                        const imgCount = Number(size.imageCount ?? form?.imageCount ?? 1);
                         return (
                           <div key={i} className="p-4 bg-gray-50 border border-gray-200 rounded-2xl space-y-3">
                             <div className="flex items-center justify-between">
@@ -654,7 +663,7 @@ export default function ManageCustomPrints() {
                                 <label className="text-[10px] font-bold text-gray-500 block mb-1">Code (internal)</label>
                                 <input
                                   type="text"
-                                  value={size.code}
+                                  value={size.code || ''}
                                   onChange={e => updateSize(i, 'code', e.target.value)}
                                   className="w-full text-xs p-2 bg-white border border-gray-200 rounded-lg outline-none focus:ring-1 focus:ring-black"
                                   placeholder="A4"
@@ -664,7 +673,7 @@ export default function ManageCustomPrints() {
                                 <label className="text-[10px] font-bold text-gray-500 block mb-1">Display Label</label>
                                 <input
                                   type="text"
-                                  value={size.label}
+                                  value={size.label || ''}
                                   onChange={e => updateSize(i, 'label', e.target.value)}
                                   className="w-full text-xs p-2 bg-white border border-gray-200 rounded-lg outline-none focus:ring-1 focus:ring-black"
                                   placeholder="A4"
@@ -685,7 +694,7 @@ export default function ManageCustomPrints() {
                                 <label className="text-[10px] font-bold text-emerald-700 block mb-1">📷 Images</label>
                                 <input
                                   type="number"
-                                  value={size.imageCount !== undefined ? size.imageCount : (form.imageCount ?? 1)}
+                                  value={size.imageCount !== undefined ? size.imageCount : (form?.imageCount ?? 1)}
                                   onChange={e => updateSize(i, 'imageCount', Math.max(1, Number(e.target.value)))}
                                   className="w-full text-xs p-2 bg-emerald-50 border border-emerald-300 rounded-lg outline-none focus:ring-1 focus:ring-emerald-500 font-black text-emerald-950"
                                   min={1}
