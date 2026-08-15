@@ -74,19 +74,19 @@ export default function ManageReviews({ initialTab = 'videos' }) {
         .select('*')
         .order('created_at', { ascending: false });
 
-      if (!error && Array.isArray(data) && data.length > 0) {
+      if (!error && Array.isArray(data)) {
         const photos = data.filter(d => !d.video_url);
         const videos = data.filter(d => !!d.video_url);
-        setPhotoReviews(photos.length > 0 ? photos : defaultVerifiedReviews);
-        setVideoReviews(videos.length > 0 ? videos : defaultVideoReviews);
+        setPhotoReviews(photos);
+        setVideoReviews(videos);
       } else {
-        setPhotoReviews(defaultVerifiedReviews);
-        setVideoReviews(defaultVideoReviews);
+        setPhotoReviews([]);
+        setVideoReviews([]);
       }
     } catch (err) {
       console.error('Reviews fetch notice:', err);
-      setPhotoReviews(defaultVerifiedReviews);
-      setVideoReviews(defaultVideoReviews);
+      setPhotoReviews([]);
+      setVideoReviews([]);
     } finally {
       setLoading(false);
     }
@@ -233,24 +233,21 @@ export default function ManageReviews({ initialTab = 'videos' }) {
 
   const handleDelete = async (id, isVideo) => {
     if (window.confirm(`Are you sure you want to delete this ${isVideo ? 'customer video reel' : 'photo review'}?`)) {
-      try {
-        if (typeof id === 'number') {
-          const { error } = await supabase.from('verified_reviews').delete().eq('id', id);
-          if (error) console.warn('Supabase delete error:', error);
-        }
-      } catch (err) {
-        console.warn('Supabase delete error:', err);
-      }
-
       if (isVideo) {
         setVideoReviews(prev => prev.filter(v => v.id !== id));
       } else {
         setPhotoReviews(prev => prev.filter(p => p.id !== id));
       }
 
+      try {
+        const { error } = await supabase.from('verified_reviews').delete().eq('id', id);
+        if (error) console.warn('Supabase delete error:', error);
+      } catch (err) {
+        console.warn('Supabase delete error:', err);
+      }
+
       setSuccessMsg(`${isVideo ? 'Video reel' : 'Photo review'} deleted.`);
       setTimeout(() => setSuccessMsg(''), 2500);
-      await fetchReviews();
     }
   };
 
