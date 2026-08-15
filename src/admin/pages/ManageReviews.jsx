@@ -74,54 +74,18 @@ export default function ManageReviews({ initialTab = 'videos' }) {
         .order('created_at', { ascending: false });
 
       if (!error && Array.isArray(data)) {
-        // If DB table exists and is completely empty, auto-seed default items once so they have real database IDs
-        if (data.length === 0 && !localStorage.getItem('casit_reviews_seeded')) {
-          localStorage.setItem('casit_reviews_seeded', 'true');
-          const seedPayload = [
-            ...defaultVerifiedReviews.map(r => ({
-              customer_name: r.customer_name,
-              location: r.location,
-              caption: r.caption,
-              rating: r.rating,
-              image_url: r.image_url,
-              thumbnail: r.image_url
-            })),
-            ...defaultVideoReviews.map(v => ({
-              customer_name: v.customer_name,
-              handle: v.handle,
-              caption: v.caption,
-              rating: 5,
-              image_url: v.thumbnail,
-              thumbnail: v.thumbnail,
-              video_url: v.video_url,
-              views: v.views,
-              likes: v.likes,
-              tagged_product: v.tagged_product
-            }))
-          ];
-          try {
-            await supabase.from('verified_reviews').insert(seedPayload);
-            const { data: seededData } = await supabase.from('verified_reviews').select('*').order('created_at', { ascending: false });
-            if (seededData && seededData.length > 0) {
-              setPhotoReviews(seededData.filter(d => !d.video_url));
-              setVideoReviews(seededData.filter(d => !!d.video_url));
-              return;
-            }
-          } catch (_) {}
-        }
-
         const photos = data.filter(d => !d.video_url);
         const videos = data.filter(d => !!d.video_url);
         setPhotoReviews(photos);
         setVideoReviews(videos);
       } else {
-        setPhotoReviews(defaultVerifiedReviews);
-        setVideoReviews(defaultVideoReviews);
+        setPhotoReviews([]);
+        setVideoReviews([]);
       }
     } catch (err) {
       console.error('Reviews fetch notice:', err);
-      setPhotoReviews(defaultVerifiedReviews);
-      setVideoReviews(defaultVideoReviews);
+      setPhotoReviews([]);
+      setVideoReviews([]);
     } finally {
       setLoading(false);
     }
