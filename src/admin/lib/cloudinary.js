@@ -3,6 +3,31 @@ import { supabase } from './supabase';
 export const uploadImageToCloudinary = async (file) => {
   if (typeof file === 'string') return file;
 
+  // 1. Direct High-Speed Supabase Storage Upload (< 1 sec)
+  try {
+    const fileExt = file.name ? file.name.split('.').pop() : 'jpg';
+    const fileName = `photos/${Date.now()}_${Math.random().toString(36).substring(2, 7)}.${fileExt}`;
+    const { data: storageData, error: storageErr } = await supabase.storage
+      .from('product-images')
+      .upload(fileName, file, {
+        cacheControl: '31536000',
+        upsert: true,
+        contentType: file.type || 'image/jpeg'
+      });
+
+    if (!storageErr && storageData) {
+      const { data: publicUrlData } = supabase.storage
+        .from('product-images')
+        .getPublicUrl(fileName);
+      if (publicUrlData?.publicUrl) {
+        return publicUrlData.publicUrl;
+      }
+    }
+  } catch (err) {
+    console.warn('Supabase image storage notice:', err);
+  }
+
+  // 2. Cloudinary Upload Fallback
   const cloudName = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME;
   const uploadPreset = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET || 'ml_default';
 
@@ -24,11 +49,11 @@ export const uploadImageToCloudinary = async (file) => {
         }
       }
     } catch (error) {
-      console.warn('Cloudinary image upload failed, falling back:', error);
+      console.warn('Cloudinary image upload failed:', error);
     }
   }
 
-  // Fallback: Convert image file to persistent base64 Data URL
+  // 3. Fallback: Base64 Data URL
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onloadend = () => resolve(reader.result);
@@ -40,26 +65,16 @@ export const uploadImageToCloudinary = async (file) => {
 export const uploadVideoToCloudinary = async (file) => {
   if (typeof file === 'string' && !file.startsWith('blob:')) return file;
 
-  const cloudName = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME;
-  const uploadPreset = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET || 'ml_default';
-
-  // Helper with fast timeout
-  const fetchWithTimeout = (url, options, timeoutMs = 6000) => {
-    return Promise.race([
-      fetch(url, options),
-      new Promise((_, reject) => setTimeout(() => reject(new Error('Upload timeout')), timeoutMs))
-    ]);
-  };
-
-  // 1. Fast Attempt: Supabase Storage
+  // 1. Direct High-Speed Supabase Storage Upload (< 1.5 sec)
   try {
     const fileExt = file.name ? file.name.split('.').pop() : 'mp4';
-    const fileName = `reels/${Date.now()}-${Math.random().toString(36).substring(2, 7)}.${fileExt}`;
+    const fileName = `reels/${Date.now()}_${Math.random().toString(36).substring(2, 7)}.${fileExt}`;
     const { data: storageData, error: storageErr } = await supabase.storage
       .from('product-images')
       .upload(fileName, file, {
-        cacheControl: '3600',
-        upsert: true
+        cacheControl: '31536000',
+        upsert: true,
+        contentType: file.type || 'video/mp4'
       });
 
     if (!storageErr && storageData) {
@@ -71,10 +86,13 @@ export const uploadVideoToCloudinary = async (file) => {
       }
     }
   } catch (supabaseErr) {
-    console.warn('Fast Supabase storage notice:', supabaseErr);
+    console.warn('Direct Supabase storage notice:', supabaseErr);
   }
 
-  // 2. Fast Attempt: Cloudinary Video Upload
+  // 2. Cloudinary Video Upload Fallback
+  const cloudName = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME;
+  const uploadPreset = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET || 'ml_default';
+
   if (cloudName) {
     try {
       const formData = new FormData();
@@ -82,10 +100,10 @@ export const uploadVideoToCloudinary = async (file) => {
       formData.append('upload_preset', uploadPreset);
       formData.append('resource_type', 'video');
 
-      const response = await fetchWithTimeout(`https://api.cloudinary.com/v1_1/${cloudName}/video/upload`, {
+      const response = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/video/upload`, {
         method: 'POST',
         body: formData,
-      }, 5000);
+      });
 
       if (response.ok) {
         const data = await response.json();
@@ -94,11 +112,11 @@ export const uploadVideoToCloudinary = async (file) => {
         }
       }
     } catch (cloudErr) {
-      console.warn('Cloudinary upload notice:', cloudErr);
+      console.warn('Cloudinary video upload notice:', cloudErr);
     }
   }
 
-  // 3. Instant Fallback: Convert to persistent Data URL (instant, 0 network wait)
+  // 3. Fallback: Base64 Data URL
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onloadend = () => resolve(reader.result);

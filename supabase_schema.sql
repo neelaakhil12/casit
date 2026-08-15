@@ -207,6 +207,20 @@ CREATE POLICY "Public read custom_print_types"  ON public.custom_print_types FOR
 CREATE POLICY "Anon write custom_print_types"   ON public.custom_print_types FOR ALL    USING (true) WITH CHECK (true);
 
 
+-- ── storage.buckets & storage.objects (High Speed Media Storage) ──
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('product-images', 'product-images', true)
+ON CONFLICT (id) DO UPDATE SET public = true;
+
+DROP POLICY IF EXISTS "Public storage upload" ON storage.objects;
+DROP POLICY IF EXISTS "Public storage read"   ON storage.objects;
+DROP POLICY IF EXISTS "Public storage delete" ON storage.objects;
+
+CREATE POLICY "Public storage upload" ON storage.objects FOR INSERT WITH CHECK (bucket_id = 'product-images');
+CREATE POLICY "Public storage read"   ON storage.objects FOR SELECT USING (bucket_id = 'product-images');
+CREATE POLICY "Public storage delete" ON storage.objects FOR DELETE USING (bucket_id = 'product-images');
+
+
 -- ──────────────────────────────────────────────────────────────
 -- VERIFICATION — Check all tables exist
 -- ──────────────────────────────────────────────────────────────
