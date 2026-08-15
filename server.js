@@ -298,6 +298,10 @@ app.post('/api/admin/reset-password', async (req, res) => {
   }
 });
 
-app.listen(PORT, () => {
-  console.log(`🚀 SMTP Auth Server running on http://localhost:${PORT}`);
-});
+if (!process.env.VERCEL) {
+  app.listen(PORT, () => {
+    console.log(`🚀 SMTP Auth Server running on http://localhost:${PORT}`);
+  });
+}
+
+export default app;
