@@ -1,5 +1,5 @@
 import React, { useState, useContext, useRef, useEffect } from 'react';
-import { getHubProducts } from '../data/customPrints';
+import { getHubProducts, fetchHubProductsFromDB } from '../data/customPrints';
 import { AppContext } from '../context/AppContext';
 import { 
   Upload, 
@@ -29,11 +29,14 @@ export default function CustomizePoster() {
   const [customFormat, setCustomFormat] = useState('poster'); // 'poster' | 'both' | 'frame'
   const [selectedFrameStyle, setSelectedFrameStyle] = useState('Classic Matte Black Frame');
 
-  // Hub Products — loaded from admin-editable localStorage or defaults
+  // Hub Products — loaded from cloud DB with instant local cache fallback
   const [hubProducts, setHubProducts] = useState(getHubProducts);
 
-  // Reload if admin changes in another tab
+  // Sync with cloud DB and storage events
   useEffect(() => {
+    fetchHubProductsFromDB().then(items => {
+      if (items && items.length > 0) setHubProducts(items);
+    });
     const onStorage = () => setHubProducts(getHubProducts());
     window.addEventListener('storage', onStorage);
     return () => window.removeEventListener('storage', onStorage);

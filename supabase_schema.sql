@@ -131,16 +131,42 @@ ALTER TABLE public.verified_reviews ADD COLUMN IF NOT EXISTS tagged_product TEXT
 
 
 -- ──────────────────────────────────────────────────────────────
+-- TABLE 6: CUSTOM PRINT TYPES (Custom Wall Art Studio Presets)
+-- ──────────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS public.custom_print_types (
+  id               TEXT PRIMARY KEY,
+  title_script     TEXT,
+  title_main       TEXT NOT NULL,
+  subtitle         TEXT,
+  button_text      TEXT,
+  image            TEXT,
+  badge            TEXT,
+  type_label       TEXT,
+  extra_tag        TEXT,
+  image_count      INTEGER DEFAULT 1,
+  allow_framing    BOOLEAN DEFAULT true,
+  allow_frame_only BOOLEAN DEFAULT true,
+  frame_price      NUMERIC DEFAULT 250,
+  frame_badge      TEXT DEFAULT 'Acrylic Shield',
+  frame_styles     JSONB,
+  default_sizes    JSONB,
+  sort_order       INTEGER DEFAULT 0,
+  created_at       TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+
+-- ──────────────────────────────────────────────────────────────
 -- ROW LEVEL SECURITY (RLS) POLICIES
 -- Allows public read, authenticated (anon key) write for all tables
 -- ──────────────────────────────────────────────────────────────
 
 -- Enable RLS on all tables
-ALTER TABLE public.categories      ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.products        ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.admin_users     ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.orders          ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.verified_reviews ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.categories         ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.products           ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.admin_users        ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.orders             ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.verified_reviews   ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.custom_print_types ENABLE ROW LEVEL SECURITY;
 
 -- ── categories ──
 DROP POLICY IF EXISTS "Public read categories"  ON public.categories;
@@ -174,6 +200,12 @@ DROP POLICY IF EXISTS "Anon write verified_reviews"   ON public.verified_reviews
 CREATE POLICY "Public read verified_reviews"  ON public.verified_reviews FOR SELECT USING (true);
 CREATE POLICY "Anon write verified_reviews"   ON public.verified_reviews FOR ALL    USING (true) WITH CHECK (true);
 
+-- ── custom_print_types ──
+DROP POLICY IF EXISTS "Public read custom_print_types"  ON public.custom_print_types;
+DROP POLICY IF EXISTS "Anon write custom_print_types"   ON public.custom_print_types;
+CREATE POLICY "Public read custom_print_types"  ON public.custom_print_types FOR SELECT USING (true);
+CREATE POLICY "Anon write custom_print_types"   ON public.custom_print_types FOR ALL    USING (true) WITH CHECK (true);
+
 
 -- ──────────────────────────────────────────────────────────────
 -- VERIFICATION — Check all tables exist
@@ -181,5 +213,5 @@ CREATE POLICY "Anon write verified_reviews"   ON public.verified_reviews FOR ALL
 SELECT table_name
 FROM information_schema.tables
 WHERE table_schema = 'public'
-  AND table_name IN ('categories', 'products', 'admin_users', 'orders', 'verified_reviews')
+  AND table_name IN ('categories', 'products', 'admin_users', 'orders', 'verified_reviews', 'custom_print_types')
 ORDER BY table_name;

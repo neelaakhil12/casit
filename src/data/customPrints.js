@@ -1,6 +1,6 @@
-// Default Hub Products for "Design Your Own Prints" section
-// Admin can override these via admin panel (stored in localStorage)
+import { supabase } from '../admin/lib/supabase';
 
+// Default Hub Products for "Design Your Own Prints" section
 export const DEFAULT_FRAME_STYLES = [
   'Classic Matte Black Frame',
   'Natural Oak Wood Frame',
@@ -152,43 +152,109 @@ export const defaultHubProducts = [
 
 const STORAGE_KEY = 'casit_custom_print_types';
 
-/** Get hub products — admin overrides first with auto-sanitization fallback */
+function sanitizeItems(items) {
+  if (!Array.isArray(items) || items.length === 0) return defaultHubProducts;
+  return items.map((item, idx) => {
+    const fallback = defaultHubProducts[idx] || defaultHubProducts[0];
+    const rawSizes = item.defaultSizes || item.default_sizes || item.sizes || fallback.defaultSizes;
+    const safeSizes = Array.isArray(rawSizes) && rawSizes.length > 0
+      ? rawSizes.map(s => ({
+          code: s.code || s.name || 'A4',
+          label: s.label || s.name || 'A4',
+          dimensions: s.dimensions || '',
+          basePrice: Number(s.basePrice || s.base_price || s.price || 129),
+          framePrice: Number(s.framePrice !== undefined ? s.framePrice : (s.frame_price !== undefined ? s.frame_price : (item.framePrice || fallback.framePrice || 250))),
+          imageCount: Number(s.imageCount || s.image_count || item.imageCount || fallback.imageCount || 1)
+        }))
+      : fallback.defaultSizes;
+
+    return {
+      id: item.id || fallback.id,
+      titleScript: item.titleScript || item.title_script || fallback.titleScript,
+      titleMain: item.titleMain || item.title_main || fallback.titleMain,
+      subtitle: item.subtitle || fallback.subtitle,
+      buttonText: item.buttonText || item.button_text || fallback.buttonText,
+      image: item.image || fallback.image,
+      badge: item.badge || fallback.badge,
+      typeLabel: item.typeLabel || item.type_label || fallback.typeLabel,
+      extraTag: item.extraTag || item.extra_tag || '',
+      imageCount: Number(item.imageCount || item.image_count || fallback.imageCount || 1),
+      allowFraming: item.allowFraming !== false && item.allow_framing !== false,
+      allowFrameOnly: item.allowFrameOnly !== false && item.allow_frame_only !== false,
+      framePrice: Number(item.framePrice || item.frame_price || fallback.framePrice || 250),
+      frameBadge: item.frameBadge || item.frame_badge || fallback.frameBadge || 'Acrylic Shield',
+      frameStyles: Array.isArray(item.frameStyles || item.frame_styles) ? (item.frameStyles || item.frame_styles) : fallback.frameStyles,
+      defaultSizes: safeSizes
+    };
+  });
+}
+
+/** Get hub products — local cache first for instant render */
 export function getHubProducts() {
   try {
     const stored = localStorage.getItem(STORAGE_KEY);
     if (stored) {
       const parsed = JSON.parse(stored);
       if (Array.isArray(parsed) && parsed.length > 0) {
-        return parsed.map((item, idx) => {
-          const fallback = defaultHubProducts[idx] || defaultHubProducts[0];
-          const rawSizes = item.defaultSizes || item.sizes || fallback.defaultSizes;
-          const safeSizes = Array.isArray(rawSizes) && rawSizes.length > 0
-            ? rawSizes.map(s => ({
-                code: s.code || s.name || 'A4',
-                label: s.label || s.name || 'A4',
-                dimensions: s.dimensions || '',
-                basePrice: Number(s.basePrice || s.price || 129),
-                framePrice: Number(s.framePrice !== undefined ? s.framePrice : (item.framePrice || fallback.framePrice || 250)),
-                imageCount: Number(s.imageCount || item.imageCount || fallback.imageCount || 1)
-              }))
-            : fallback.defaultSizes;
-
-          return {
-            ...fallback,
-            ...item,
-            defaultSizes: safeSizes,
-            imageCount: Number(item.imageCount || fallback.imageCount || 1)
-          };
-        });
+        return sanitizeItems(parsed);
       }
     }
   } catch (_) {}
   return defaultHubProducts;
 }
 
-/** Save hub products to localStorage */
-export function saveHubProducts(products) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(products));
+/** Fetch latest hub products from Supabase Cloud DB */
+export async function fetchHubProductsFromDB() {
+  try {
+    const { data, error } = await supabase
+      .from('custom_print_types')
+      .select('*')
+      .order('sort_order', { ascending: true });
+
+    if (!error && data && data.length > 0) {
+      const sanitized = sanitizeItems(data);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(sanitized));
+      return sanitized;
+    }
+  } catch (e) {
+    console.warn('Supabase custom_print_types fetch skipped/fallback:', e);
+  }
+  return getHubProducts();
+}
+
+/** Save hub products to both local cache and Supabase Cloud DB */
+export async function saveHubProducts(products) {
+  const sanitized = sanitizeItems(products);
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(sanitized));
+  } catch (_) {}
+
+  // Sync to Supabase Cloud DB so Localhost & Vercel are 100% identical
+  try {
+    const dbPayload = sanitized.map((p, idx) => ({
+      id: p.id,
+      title_script: p.titleScript,
+      title_main: p.titleMain,
+      subtitle: p.subtitle,
+      button_text: p.buttonText,
+      image: p.image,
+      badge: p.badge,
+      type_label: p.typeLabel,
+      extra_tag: p.extraTag || '',
+      image_count: p.imageCount,
+      allow_framing: p.allowFraming,
+      allow_frame_only: p.allowFrameOnly,
+      frame_price: p.framePrice,
+      frame_badge: p.frameBadge,
+      frame_styles: p.frameStyles,
+      default_sizes: p.defaultSizes,
+      sort_order: idx
+    }));
+
+    await supabase.from('custom_print_types').upsert(dbPayload, { onConflict: 'id' });
+  } catch (e) {
+    console.warn('Supabase custom_print_types sync skipped:', e);
+  }
 }
 
 /** Reset to defaults */

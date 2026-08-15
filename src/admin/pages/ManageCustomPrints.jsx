@@ -25,6 +25,7 @@ import {
 import { uploadImageToCloudinary } from '../lib/cloudinary';
 import {
   getHubProducts,
+  fetchHubProductsFromDB,
   saveHubProducts,
   defaultHubProducts,
   DEFAULT_FRAME_STYLES
@@ -72,11 +73,14 @@ export default function ManageCustomPrints() {
   const [expandedSection, setExpandedSection] = useState('basic'); // 'basic' | 'sizes'
   const [previewCard, setPreviewCard] = useState(null);
 
-  // Sync on mount or storage change
+  // Sync on mount with Cloud DB (so Localhost & Live Vercel match)
   useEffect(() => {
-    try {
-      setProducts(getHubProducts());
-    } catch (_) {}
+    fetchHubProductsFromDB().then(cloudItems => {
+      if (cloudItems && cloudItems.length > 0) {
+        setProducts(cloudItems);
+      }
+    });
+
     const onStorage = () => {
       try {
         setProducts(getHubProducts());
