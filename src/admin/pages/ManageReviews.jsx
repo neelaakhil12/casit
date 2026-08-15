@@ -44,6 +44,7 @@ export default function ManageReviews({ initialTab = 'videos' }) {
   const [views, setViews] = useState('45.2K');
   const [likes, setLikes] = useState('3.8K');
   const [videoUrl, setVideoUrl] = useState('');
+  const [videoPreviewUrl, setVideoPreviewUrl] = useState('');
   const [thumbnailUrl, setThumbnailUrl] = useState('');
   const [imageFile, setImageFile] = useState(null);
   const [videoFile, setVideoFile] = useState(null);
@@ -136,6 +137,7 @@ export default function ManageReviews({ initialTab = 'videos' }) {
     setViews(`${(Math.floor(Math.random() * 80) + 20).toFixed(1)}K`);
     setLikes(`${(Math.floor(Math.random() * 9) + 2).toFixed(1)}K`);
     setVideoUrl('');
+    setVideoPreviewUrl('');
     setThumbnailUrl('');
     setImageFile(null);
     setVideoFile(null);
@@ -154,6 +156,7 @@ export default function ManageReviews({ initialTab = 'videos' }) {
     setViews(item.views || '45.0K');
     setLikes(item.likes || '3.5K');
     setVideoUrl(item.video_url || '');
+    setVideoPreviewUrl(item.video_url || '');
     setThumbnailUrl(item.thumbnail || item.image_url || '');
     setImageFile(null);
     setVideoFile(null);
@@ -174,7 +177,7 @@ export default function ManageReviews({ initialTab = 'videos' }) {
     const file = e.target.files[0];
     if (file) {
       setVideoFile(file);
-      setVideoUrl(URL.createObjectURL(file));
+      setVideoPreviewUrl(URL.createObjectURL(file));
     }
   };
 
@@ -572,11 +575,11 @@ export default function ManageReviews({ initialTab = 'videos' }) {
                     </div>
                   </div>
 
-                  {videoUrl && (
+                  {(videoPreviewUrl || videoUrl) && (
                     <div className="pt-2">
                       <span className="text-[10px] font-bold text-gray-500 block mb-1">Video Stream Preview:</span>
                       <video 
-                        src={videoUrl} 
+                        src={videoPreviewUrl || videoUrl} 
                         controls 
                         className="w-full max-h-48 rounded-xl bg-black object-cover"
                       />

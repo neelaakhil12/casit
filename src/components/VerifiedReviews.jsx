@@ -227,8 +227,9 @@ function ReelCardVideo({ src, isUnmuted }) {
 }
 
 export default function VerifiedReviews() {
-  const [photoReviews, setPhotoReviews] = useState(defaultVerifiedReviews);
-  const [videoReviews, setVideoReviews] = useState(defaultVideoReviews);
+  const [photoReviews, setPhotoReviews] = useState([]);
+  const [videoReviews, setVideoReviews] = useState([]);
+  const [isLoaded, setIsLoaded] = useState(false);
   
   // Modals
   const [activePhotoModal, setActivePhotoModal] = useState(null);
@@ -261,13 +262,15 @@ export default function VerifiedReviews() {
       console.log('Error loading verified reviews:', err);
       setPhotoReviews([]);
       setVideoReviews([]);
+    } finally {
+      setIsLoaded(true);
     }
   };
 
-  const hasPhotos = photoReviews && photoReviews.length > 0;
-  const hasVideos = videoReviews && videoReviews.length > 0;
+  const hasPhotos = isLoaded && photoReviews && photoReviews.length > 0;
+  const hasVideos = isLoaded && videoReviews && videoReviews.length > 0;
 
-  if (!hasPhotos && !hasVideos) {
+  if (!isLoaded || (!hasPhotos && !hasVideos)) {
     return null;
   }
 
