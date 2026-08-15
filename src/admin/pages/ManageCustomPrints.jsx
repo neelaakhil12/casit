@@ -18,10 +18,18 @@ import {
   Tag,
   DollarSign,
   Copy,
-  Save
+  Save,
+  Check,
+  Shield
 } from 'lucide-react';
 import { uploadImageToCloudinary } from '../lib/cloudinary';
-import { getHubProducts, saveHubProducts, resetHubProducts, defaultHubProducts } from '../../data/customPrints';
+import {
+  getHubProducts,
+  saveHubProducts,
+  resetHubProducts,
+  defaultHubProducts,
+  DEFAULT_FRAME_STYLES
+} from '../../data/customPrints';
 
 const BADGE_OPTIONS = ['Bestseller', 'Trending', 'New Style', 'Popular', 'Best Gift', 'Limited', 'Sale'];
 
@@ -34,11 +42,13 @@ const emptyProduct = () => ({
   image: '',
   badge: 'New Style',
   typeLabel: 'New Print Type',
+  allowFraming: true,
+  framePrice: 250,
+  frameBadge: 'Acrylic Shield',
+  frameStyles: [...DEFAULT_FRAME_STYLES],
   defaultSizes: [
-    { code: 'A4', label: 'A4', dimensions: '8.3 x 11.7 in', basePrice: 199 }
-  ],
-  bundles: [
-    { key: '1', label: '1 Print', totalUnits: 1, payFor: 1 }
+    { code: 'A4', label: 'A4', dimensions: '8.3 x 11.7 in', basePrice: 199 },
+    { code: 'A3', label: 'A3', dimensions: '11.7 x 16.5 in', basePrice: 299 }
   ]
 });
 
@@ -51,14 +61,14 @@ export default function ManageCustomPrints() {
   const [uploading, setUploading] = useState(false);
   const [successMsg, setSuccessMsg] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
-  const [expandedSection, setExpandedSection] = useState('basic'); // 'basic' | 'sizes' | 'bundles'
+  const [expandedSection, setExpandedSection] = useState('basic'); // 'basic' | 'sizes' | 'framing'
   const [previewCard, setPreviewCard] = useState(null);
+  const [newFrameStyleInput, setNewFrameStyleInput] = useState('');
 
   // Persist products whenever they change
   const persist = (updated) => {
     setProducts(updated);
     saveHubProducts(updated);
-    // Broadcast change to other tabs (storefront)
     window.dispatchEvent(new StorageEvent('storage', { key: 'casit_custom_print_types' }));
   };
 
@@ -73,7 +83,14 @@ export default function ManageCustomPrints() {
   };
 
   const openEdit = (idx) => {
-    setForm(JSON.parse(JSON.stringify(products[idx])));
+    const item = products[idx];
+    setForm({
+      ...item,
+      allowFraming: item.allowFraming ?? true,
+      framePrice: item.framePrice ?? 250,
+      frameBadge: item.frameBadge ?? 'Acrylic Shield',
+      frameStyles: item.frameStyles ? [...item.frameStyles] : [...DEFAULT_FRAME_STYLES]
+    });
     setEditingIdx(idx);
     setImageFile(null);
     setErrorMsg('');
@@ -91,40 +108,49 @@ export default function ManageCustomPrints() {
   };
 
   const handleDuplicate = (idx) => {
-    const copy = { ...JSON.parse(JSON.stringify(products[idx])), id: `custom-${Date.now()}`, titleMain: products[idx].titleMain + ' (Copy)' };
+    const copy = {
+      ...JSON.parse(JSON.stringify(products[idx])),
+      id: `custom-${Date.now()}`,
+      titleMain: products[idx].titleMain + ' (Copy)'
+    };
     const updated = [...products.slice(0, idx + 1), copy, ...products.slice(idx + 1)];
     persist(updated);
     setSuccessMsg(`Duplicated "${products[idx].titleMain}".`);
     setTimeout(() => setSuccessMsg(''), 3000);
   };
 
-  const handleMoveUp = (idx) => {
+  const moveUp = (idx) => {
     if (idx === 0) return;
     const updated = [...products];
-    [updated[idx - 1], updated[idx]] = [updated[idx], updated[idx - 1]];
+    const temp = updated[idx - 1];
+    updated[idx - 1] = updated[idx];
+    updated[idx] = temp;
     persist(updated);
   };
 
-  const handleMoveDown = (idx) => {
+  const moveDown = (idx) => {
     if (idx === products.length - 1) return;
     const updated = [...products];
-    [updated[idx], updated[idx + 1]] = [updated[idx + 1], updated[idx]];
+    const temp = updated[idx + 1];
+    updated[idx + 1] = updated[idx];
+    updated[idx] = temp;
     persist(updated);
   };
 
   const handleReset = () => {
-    if (!window.confirm('Reset all custom print types to factory defaults? All changes will be lost.')) return;
+    if (!window.confirm('Reset all custom print types to original defaults? Any custom types will be replaced.')) return;
     resetHubProducts();
     setProducts(defaultHubProducts);
-    setSuccessMsg('Reset to factory defaults.');
+    window.dispatchEvent(new StorageEvent('storage', { key: 'casit_custom_print_types' }));
+    setSuccessMsg('Reset to default custom print types.');
     setTimeout(() => setSuccessMsg(''), 3000);
   };
 
   // Form field helpers
-  const setField = (key, value) => setForm(f => ({ ...f, [key]: value }));
+  const setField = (key, val) => setForm(f => ({ ...f, [key]: val }));
 
   const handleImageFileChange = (e) => {
-    const file = e.target.files[0];
+    const file = e.target.files?.[0];
     if (file) {
       setImageFile(file);
       setField('image', URL.createObjectURL(file));
@@ -132,15 +158,52 @@ export default function ManageCustomPrints() {
   };
 
   // Size row helpers
-  const addSize = () => setForm(f => ({ ...f, defaultSizes: [...f.defaultSizes, { code: `S${Date.now()}`, label: 'New Size', dimensions: '', basePrice: 299 }] }));
-  const updateSize = (i, key, val) => setForm(f => { const s = [...f.defaultSizes]; s[i] = { ...s[i], [key]: val }; return { ...f, defaultSizes: s }; });
-  const removeSize = (i) => setForm(f => ({ ...f, defaultSizes: f.defaultSizes.filter((_, idx) => idx !== i) }));
+  const addSize = () => setForm(f => ({
+    ...f,
+    defaultSizes: [...f.defaultSizes, { code: `S${Date.now()}`, label: 'New Size', dimensions: '', basePrice: 199 }]
+  }));
+  const updateSize = (i, key, val) => setForm(f => {
+    const s = [...f.defaultSizes];
+    s[i] = { ...s[i], [key]: key === 'basePrice' ? Number(val) : val };
+    return { ...f, defaultSizes: s };
+  });
+  const removeSize = (i) => setForm(f => ({
+    ...f,
+    defaultSizes: f.defaultSizes.filter((_, idx) => idx !== i)
+  }));
+
+  // Framing style helpers
+  const toggleFrameStyle = (styleName) => {
+    setForm(f => {
+      const current = f.frameStyles || [];
+      const exists = current.includes(styleName);
+      const updated = exists ? current.filter(s => s !== styleName) : [...current, styleName];
+      return { ...f, frameStyles: updated };
+    });
+  };
+
+  const addCustomFrameStyle = () => {
+    if (!newFrameStyleInput.trim()) return;
+    const styleName = newFrameStyleInput.trim();
+    setForm(f => {
+      const current = f.frameStyles || [];
+      if (current.includes(styleName)) return f;
+      return { ...f, frameStyles: [...current, styleName] };
+    });
+    setNewFrameStyleInput('');
+  };
+
+  const removeFrameStyle = (styleName) => {
+    setForm(f => ({
+      ...f,
+      frameStyles: (f.frameStyles || []).filter(s => s !== styleName)
+    }));
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!form.titleMain.trim()) { setErrorMsg('Title is required.'); return; }
     if (form.defaultSizes.length === 0) { setErrorMsg('Add at least one size option.'); return; }
-    if (form.bundles.length === 0) { setErrorMsg('Add at least one bundle option.'); return; }
 
     setUploading(true);
     setErrorMsg('');
@@ -155,207 +218,234 @@ export default function ManageCustomPrints() {
         }
       }
 
-      const saved = { ...form, image: finalImage };
-      let updated;
+      const updatedProduct = {
+        ...form,
+        image: finalImage,
+        allowFraming: !!form.allowFraming,
+        framePrice: Number(form.framePrice) || 0,
+        frameBadge: form.frameBadge || '',
+        frameStyles: form.frameStyles || []
+      };
+
+      let updatedList;
       if (editingIdx !== null) {
-        updated = products.map((p, i) => i === editingIdx ? saved : p);
+        updatedList = products.map((p, i) => i === editingIdx ? updatedProduct : p);
       } else {
-        updated = [...products, saved];
+        updatedList = [...products, updatedProduct];
       }
 
-      persist(updated);
-      setSuccessMsg(editingIdx !== null ? `"${saved.titleMain}" updated!` : `"${saved.titleMain}" added!`);
+      persist(updatedList);
       setModalOpen(false);
+      setSuccessMsg(editingIdx !== null ? 'Print type updated successfully!' : 'New print type added!');
       setTimeout(() => setSuccessMsg(''), 3000);
     } catch (err) {
-      setErrorMsg('Failed to save. ' + err.message);
+      console.error(err);
+      setErrorMsg('Failed to save. Please try again.');
     } finally {
       setUploading(false);
     }
   };
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
+    <div className="space-y-8 animate-fade-in">
+      {/* ─── PAGE HEADER ─── */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-white p-6 rounded-3xl border border-gray-200 shadow-sm">
         <div>
-          <div className="flex items-center gap-2">
-            <span className="p-2 bg-primary/20 text-black rounded-xl">
-              <Layers size={22} />
+          <div className="flex items-center gap-2.5">
+            <span className="p-2.5 bg-yellow-100 text-yellow-800 rounded-2xl">
+              <Sparkles size={22} />
             </span>
-            <h2 className="text-2xl font-black text-gray-900">Design Your Own — Print Types</h2>
+            <div>
+              <h1 className="text-2xl font-black text-gray-900">Custom Prints & Frames</h1>
+              <p className="text-xs text-gray-500 font-medium">Manage items shown on the "Design Your Own Prints" page, sizes, pricing, and framing options</p>
+            </div>
           </div>
-          <p className="text-xs text-gray-500 mt-1">
-            Manage the cards shown on the "Design Your Own" customize poster section. Changes apply live instantly.
-          </p>
         </div>
-        <div className="flex items-center gap-2 flex-wrap">
+
+        <div className="flex items-center gap-3">
           <button
             onClick={handleReset}
-            className="flex items-center gap-2 px-4 py-2.5 text-xs font-bold text-gray-600 border border-gray-200 rounded-xl hover:bg-gray-50 transition"
+            className="flex items-center gap-2 px-4 py-2.5 rounded-2xl border border-gray-300 text-xs font-bold text-gray-700 hover:bg-gray-100 transition shadow-sm"
+            title="Reset to initial 6 presets"
           >
-            <RotateCcw size={15} /> Reset to Defaults
+            <RotateCcw size={14} /> Reset Defaults
           </button>
           <button
             onClick={openAdd}
-            className="btn-primary !py-2.5 !px-6 text-xs font-extrabold shadow-yellow-glow flex items-center gap-2"
+            className="btn-primary flex items-center gap-2 !py-2.5 !px-5 text-xs font-black shadow-yellow-glow"
           >
-            <Plus size={16} /> Add New Print Type
+            <Plus size={16} /> Add Print Type
           </button>
         </div>
       </div>
 
       {/* Notifications */}
       {successMsg && (
-        <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 text-green-700 text-xs font-semibold rounded-xl">
-          <CheckCircle2 size={16} /> {successMsg}
-        </div>
-      )}
-      {errorMsg && (
-        <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 text-red-700 text-xs font-semibold rounded-xl">
-          <AlertCircle size={16} /> {errorMsg}
+        <div className="flex items-center gap-3 p-4 bg-green-50 border border-green-200 text-green-800 text-xs font-bold rounded-2xl animate-fade-in shadow-sm">
+          <CheckCircle2 size={16} className="text-green-600 shrink-0" />
+          <span>{successMsg}</span>
         </div>
       )}
 
-      {/* Cards Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+      {/* ─── CARDS GRID ─── */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {products.map((item, idx) => (
           <div
-            key={item.id}
-            className="group relative bg-white border border-gray-200 rounded-3xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col"
+            key={item.id || idx}
+            className="bg-white rounded-3xl border border-gray-200 shadow-sm hover:shadow-md transition-all overflow-hidden flex flex-col group"
           >
-            {/* Position Badge */}
-            <div className="absolute top-3 left-3 z-20 w-7 h-7 bg-black/70 text-white text-[11px] font-black rounded-full flex items-center justify-center">
-              {idx + 1}
-            </div>
-
-            {/* Reorder Buttons */}
-            <div className="absolute top-3 right-3 z-20 flex flex-col gap-1">
-              <button
-                onClick={() => handleMoveUp(idx)}
-                disabled={idx === 0}
-                className="w-7 h-7 bg-white/90 border border-gray-200 rounded-lg flex items-center justify-center hover:bg-primary disabled:opacity-30 transition"
-                title="Move Up"
-              >
-                <ChevronUp size={14} />
-              </button>
-              <button
-                onClick={() => handleMoveDown(idx)}
-                disabled={idx === products.length - 1}
-                className="w-7 h-7 bg-white/90 border border-gray-200 rounded-lg flex items-center justify-center hover:bg-primary disabled:opacity-30 transition"
-                title="Move Down"
-              >
-                <ChevronDown size={14} />
-              </button>
-            </div>
-
-            {/* Product Image */}
-            <div className="relative aspect-[4/5] bg-gray-100 overflow-hidden">
+            {/* Card Header & Preview */}
+            <div className="relative aspect-[4/3] bg-gray-100 overflow-hidden">
               {item.image ? (
                 <img
                   src={item.image}
                   alt={item.titleMain}
-                  className="w-full h-full object-cover group-hover:scale-105 transition duration-700"
+                  className="w-full h-full object-cover group-hover:scale-105 transition duration-500"
                 />
               ) : (
-                <div className="w-full h-full flex flex-col items-center justify-center text-gray-400">
-                  <ImageIcon size={32} />
-                  <span className="text-xs mt-2">No Image</span>
+                <div className="w-full h-full flex flex-col items-center justify-center text-gray-300 gap-2">
+                  <ImageIcon size={36} />
+                  <span className="text-[11px] font-bold uppercase tracking-wider">No Cover Image</span>
                 </div>
               )}
-              <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-black/30" />
-              <div className="absolute top-12 inset-x-0 text-center z-10 px-4 space-y-1">
-                <p className="font-serif italic text-sm text-white drop-shadow-md">{item.titleScript}</p>
-                <h3 className="text-xl font-black text-white tracking-tight drop-shadow-lg">{item.titleMain}</h3>
-                <span className="inline-block text-[10px] bg-primary text-black font-extrabold px-2 py-0.5 rounded-full">{item.badge}</span>
+
+              {/* Overlay Badge */}
+              <div className="absolute top-3 left-3 flex gap-1.5 items-center">
+                <span className="bg-primary text-black font-black text-[10px] px-2.5 py-1 rounded-full uppercase tracking-wider shadow">
+                  {item.badge || 'Featured'}
+                </span>
+                {item.extraTag && (
+                  <span className="bg-black/80 text-white font-black text-[10px] px-2 py-0.5 rounded-full shadow">
+                    {item.extraTag}
+                  </span>
+                )}
+                {item.allowFraming && (
+                  <span className="bg-emerald-600 text-white font-black text-[9px] px-2 py-0.5 rounded-full shadow flex items-center gap-1">
+                    <Shield size={10} /> +Frame ₹{item.framePrice || 250}
+                  </span>
+                )}
+              </div>
+
+              {/* Action Buttons Top Right */}
+              <div className="absolute top-3 right-3 flex items-center gap-1.5 bg-black/60 backdrop-blur-md p-1 rounded-2xl opacity-90 group-hover:opacity-100 transition">
+                <button
+                  onClick={() => moveUp(idx)}
+                  disabled={idx === 0}
+                  className="p-1 text-white hover:text-primary disabled:opacity-30 transition"
+                  title="Move Left/Up"
+                >
+                  <ChevronUp size={14} />
+                </button>
+                <button
+                  onClick={() => moveDown(idx)}
+                  disabled={idx === products.length - 1}
+                  className="p-1 text-white hover:text-primary disabled:opacity-30 transition"
+                  title="Move Right/Down"
+                >
+                  <ChevronDown size={14} />
+                </button>
+                <button
+                  onClick={() => setPreviewCard(item)}
+                  className="p-1 text-white hover:text-primary transition"
+                  title="Preview Customer Card"
+                >
+                  <Eye size={14} />
+                </button>
+              </div>
+
+              {/* Script Title Banner Bottom of Image */}
+              <div className="absolute bottom-3 left-3 right-3 text-white drop-shadow-md">
+                <span className="font-serif italic text-xs block text-white/90">{item.titleScript || 'Custom'}</span>
+                <span className="font-black text-lg tracking-tight leading-none block">{item.titleMain}</span>
               </div>
             </div>
 
-            {/* Info */}
-            <div className="p-4 flex-1 space-y-2">
-              <h4 className="font-extrabold text-sm text-gray-900">{item.typeLabel}</h4>
-              <p className="text-[11px] text-gray-500 leading-snug">{item.subtitle}</p>
-              <div className="flex flex-wrap gap-1 pt-1">
-                <span className="text-[10px] bg-gray-100 text-gray-700 px-2 py-0.5 rounded-full font-semibold">
-                  {item.defaultSizes.length} size{item.defaultSizes.length !== 1 ? 's' : ''}
-                </span>
-                <span className="text-[10px] bg-gray-100 text-gray-700 px-2 py-0.5 rounded-full font-semibold">
-                  {item.bundles.length} bundle{item.bundles.length !== 1 ? 's' : ''}
-                </span>
-                <span className="text-[10px] bg-primary/20 text-black px-2 py-0.5 rounded-full font-semibold">
-                  from ₹{Math.min(...item.defaultSizes.map(s => s.basePrice))}
-                </span>
-              </div>
-            </div>
+            {/* Card Body */}
+            <div className="p-5 flex-1 flex flex-col justify-between space-y-4">
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-black text-gray-900">{item.typeLabel}</span>
+                  <span className="text-[11px] font-bold text-gray-500">
+                    {item.defaultSizes?.length || 0} Size{item.defaultSizes?.length === 1 ? '' : 's'}
+                  </span>
+                </div>
+                <p className="text-xs text-gray-500 line-clamp-2 leading-relaxed">{item.subtitle}</p>
 
-            {/* Actions */}
-            <div className="flex items-center justify-between px-4 pb-4 gap-2">
-              <button
-                onClick={() => setPreviewCard(item)}
-                className="flex items-center gap-1 text-[11px] font-bold text-gray-500 hover:text-black transition"
-              >
-                <Eye size={13} /> Preview
-              </button>
-              <div className="flex gap-1.5">
+                {/* Sizes Pill preview */}
+                <div className="flex flex-wrap gap-1.5 pt-1">
+                  {item.defaultSizes?.map((sz, i) => (
+                    <span key={i} className="text-[10px] font-bold bg-gray-100 text-gray-700 px-2 py-0.5 rounded-lg">
+                      {sz.label}: ₹{sz.basePrice}
+                    </span>
+                  ))}
+                </div>
+
+                {/* Framing status pill */}
+                <div className="pt-1 text-[11px]">
+                  {item.allowFraming ? (
+                    <span className="text-emerald-700 font-extrabold flex items-center gap-1">
+                      ✓ Framing Available (+₹{item.framePrice || 250}) · {item.frameStyles?.length || 0} Styles
+                    </span>
+                  ) : (
+                    <span className="text-gray-400 font-semibold">Unframed print only</span>
+                  )}
+                </div>
+              </div>
+
+              {/* Footer Actions */}
+              <div className="flex items-center justify-between pt-3 border-t border-gray-100 gap-2">
                 <button
                   onClick={() => handleDuplicate(idx)}
-                  className="p-2 text-gray-500 hover:text-black hover:bg-gray-100 rounded-xl transition"
-                  title="Duplicate"
+                  className="flex items-center gap-1 text-[11px] font-bold text-gray-600 hover:text-black py-1.5 px-2.5 rounded-xl hover:bg-gray-100 transition"
+                  title="Duplicate this print type"
                 >
-                  <Copy size={14} />
+                  <Copy size={13} /> Duplicate
                 </button>
-                <button
-                  onClick={() => openEdit(idx)}
-                  className="p-2 text-gray-600 hover:text-black hover:bg-gray-100 rounded-xl transition"
-                  title="Edit"
-                >
-                  <Edit2 size={14} />
-                </button>
-                <button
-                  onClick={() => handleDelete(idx)}
-                  className="p-2 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-xl transition"
-                  title="Delete"
-                >
-                  <Trash2 size={14} />
-                </button>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => openEdit(idx)}
+                    className="flex items-center gap-1 text-[11px] font-black bg-black text-white py-1.5 px-3 rounded-xl hover:bg-neutral-800 transition shadow-sm"
+                  >
+                    <Edit2 size={12} /> Edit
+                  </button>
+                  <button
+                    onClick={() => handleDelete(idx)}
+                    className="p-1.5 text-red-500 hover:bg-red-50 rounded-xl transition"
+                    title="Delete"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                </div>
               </div>
             </div>
           </div>
         ))}
-
-        {/* Add New Card Placeholder */}
-        <button
-          onClick={openAdd}
-          className="flex flex-col items-center justify-center min-h-[320px] border-2 border-dashed border-gray-300 rounded-3xl hover:border-black hover:bg-gray-50 transition-all duration-300 text-gray-400 hover:text-black group"
-        >
-          <Plus size={32} className="mb-3 group-hover:scale-110 transition" />
-          <span className="text-sm font-bold">Add New Print Type</span>
-          <span className="text-xs mt-1 text-gray-400">Single, Split, Retro, etc.</span>
-        </button>
       </div>
 
       {/* ─── ADD / EDIT MODAL ─── */}
       {modalOpen && form && (
-        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
-          <div className="relative max-w-3xl w-full bg-white rounded-3xl shadow-2xl my-8 overflow-hidden animate-fade-in-up">
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-2xl w-full max-h-[90vh] overflow-hidden shadow-2xl border border-gray-200 animate-fade-in-up flex flex-col">
+            
             {/* Modal Header */}
             <div className="flex items-center justify-between px-8 py-5 border-b border-gray-100 bg-gray-50">
               <div className="flex items-center gap-3">
-                <span className="p-2 bg-primary rounded-xl">
+                <div className="p-2.5 bg-yellow-100 text-yellow-800 rounded-2xl">
                   <Package size={20} />
-                </span>
+                </div>
                 <div>
                   <h3 className="text-lg font-black text-gray-900">
-                    {editingIdx !== null ? 'Edit Print Type' : 'Add New Print Type'}
+                    {editingIdx !== null ? 'Edit Custom Print Type' : 'Add New Custom Print Type'}
                   </h3>
-                  <p className="text-xs text-gray-500">Changes appear live on the "Design Your Own" page</p>
+                  <p className="text-xs text-gray-500 font-medium">Changes appear live on the "Design Your Own" page</p>
                 </div>
               </div>
               <button
                 onClick={() => setModalOpen(false)}
-                className="p-2 rounded-full hover:bg-gray-200 transition text-gray-500"
+                className="p-2 rounded-full hover:bg-gray-200 text-gray-400 hover:text-black transition"
               >
-                <X size={20} />
+                <X size={18} />
               </button>
             </div>
 
@@ -370,16 +460,20 @@ export default function ManageCustomPrints() {
 
                 {/* ── SECTION TABS ── */}
                 <div className="flex bg-gray-100 rounded-2xl p-1 gap-1">
-                  {['basic', 'sizes'].map(tab => (
+                  {[
+                    { id: 'basic', label: '1. Basic Info' },
+                    { id: 'sizes', label: '2. Sizes & Base Prices' },
+                    { id: 'framing', label: '3. Framing Options 🖼️' }
+                  ].map(tab => (
                     <button
-                      key={tab}
+                      key={tab.id}
                       type="button"
-                      onClick={() => setExpandedSection(tab)}
+                      onClick={() => setExpandedSection(tab.id)}
                       className={`flex-1 py-2.5 rounded-xl text-xs font-extrabold capitalize transition ${
-                        expandedSection === tab ? 'bg-black text-white shadow' : 'text-gray-600 hover:text-black'
+                        expandedSection === tab.id ? 'bg-black text-white shadow' : 'text-gray-600 hover:text-black'
                       }`}
                     >
-                      {tab === 'basic' ? '1. Basic Info' : '2. Size Options & Pricing'}
+                      {tab.label}
                     </button>
                   ))}
                 </div>
@@ -412,7 +506,7 @@ export default function ManageCustomPrints() {
                           />
                           <input
                             type="text"
-                            placeholder="Or paste image URL..."
+                            placeholder="Or paste image URL (e.g. /custom-prints/custom-poster.jpg)..."
                             value={form.image || ''}
                             onChange={e => setField('image', e.target.value)}
                             className="w-full text-xs p-2.5 bg-white border border-gray-200 rounded-xl outline-none focus:ring-1 focus:ring-black"
@@ -421,20 +515,20 @@ export default function ManageCustomPrints() {
                       </div>
                     </div>
 
-                    {/* Title Row */}
+                    {/* Titles */}
                     <div className="grid grid-cols-2 gap-3">
                       <div>
-                        <label className="text-xs font-bold text-gray-700 block mb-1">Script Text (Italic)</label>
+                        <label className="text-xs font-bold text-gray-700 block mb-1">Script Title (top script text)</label>
                         <input
                           type="text"
                           placeholder="Custom"
                           value={form.titleScript || ''}
                           onChange={e => setField('titleScript', e.target.value)}
-                          className="w-full text-xs p-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-black font-semibold"
+                          className="w-full text-xs p-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-black font-serif italic"
                         />
                       </div>
                       <div>
-                        <label className="text-xs font-bold text-gray-700 block mb-1">Main Title *</label>
+                        <label className="text-xs font-bold text-gray-700 block mb-1">Main Title (bold uppercase)</label>
                         <input
                           type="text"
                           placeholder="POSTER"
@@ -473,7 +567,7 @@ export default function ManageCustomPrints() {
                       <label className="text-xs font-bold text-gray-700 block mb-1">Subtitle / Description</label>
                       <input
                         type="text"
-                        placeholder="3-Piece Panoramic Triptych Display"
+                        placeholder="Single Panel Standard & Jumbo Prints"
                         value={form.subtitle || ''}
                         onChange={e => setField('subtitle', e.target.value)}
                         className="w-full text-xs p-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-black"
@@ -509,7 +603,10 @@ export default function ManageCustomPrints() {
                 {expandedSection === 'sizes' && (
                   <div className="space-y-4">
                     <div className="flex items-center justify-between">
-                      <h4 className="text-xs font-extrabold text-gray-800">Size Options ({form.defaultSizes.length})</h4>
+                      <div>
+                        <h4 className="text-xs font-extrabold text-gray-800">Size Options & Base Prices ({form.defaultSizes.length})</h4>
+                        <p className="text-[10px] text-gray-500">Each size has its own base price. Total price = Size Base Price × Quantity.</p>
+                      </div>
                       <button
                         type="button"
                         onClick={addSize}
@@ -536,7 +633,7 @@ export default function ManageCustomPrints() {
                               <Trash2 size={13} />
                             </button>
                           </div>
-                          <div className="grid grid-cols-2 gap-2">
+                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                             <div>
                               <label className="text-[10px] font-bold text-gray-500 block mb-1">Code (internal)</label>
                               <input
@@ -568,12 +665,12 @@ export default function ManageCustomPrints() {
                               />
                             </div>
                             <div>
-                              <label className="text-[10px] font-bold text-gray-500 block mb-1">Base Price (₹)</label>
+                              <label className="text-[10px] font-bold text-green-700 block mb-1">Base Price (₹)</label>
                               <input
                                 type="number"
                                 value={size.basePrice}
-                                onChange={e => updateSize(i, 'basePrice', Number(e.target.value))}
-                                className="w-full text-xs p-2 bg-white border border-gray-200 rounded-lg outline-none focus:ring-1 focus:ring-black font-bold"
+                                onChange={e => updateSize(i, 'basePrice', e.target.value)}
+                                className="w-full text-xs p-2 bg-green-50 border border-green-300 rounded-lg outline-none focus:ring-1 focus:ring-green-500 font-black text-green-900"
                                 min={1}
                               />
                             </div>
@@ -584,249 +681,171 @@ export default function ManageCustomPrints() {
                   </div>
                 )}
 
-                {/* ── TAB 3: BUNDLE OFFERS ── */}
-                {expandedSection === 'bundles' && (
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <h4 className="text-xs font-extrabold text-gray-800">Bundle Offers ({form.bundles.length})</h4>
+                {/* ── TAB 3: FRAMING OPTIONS ── */}
+                {expandedSection === 'framing' && (
+                  <div className="space-y-5 animate-fade-in">
+                    <div>
+                      <h4 className="text-xs font-extrabold text-gray-800">Framing Configuration</h4>
+                      <p className="text-[10px] text-gray-500">Configure whether framing is offered for this custom print type and set frame pricing & styles.</p>
+                    </div>
+
+                    {/* Enable / Disable Framing Toggle */}
+                    <div className="p-4 bg-gray-50 rounded-2xl border border-gray-200 flex items-center justify-between">
+                      <div>
+                        <span className="text-xs font-extrabold text-gray-900 block">Offer Framing Option</span>
+                        <span className="text-[11px] text-gray-500">
+                          {form.allowFraming
+                            ? 'Customers will see the framing checkbox and style selector on the storefront'
+                            : 'Framing is disabled for this print type (unframed only)'}
+                        </span>
+                      </div>
                       <button
                         type="button"
-                        onClick={addBundle}
-                        className="flex items-center gap-1.5 text-xs font-bold bg-black text-white px-3 py-2 rounded-xl hover:bg-neutral-800 transition"
+                        onClick={() => setField('allowFraming', !form.allowFraming)}
+                        className={`w-12 h-6 flex items-center rounded-full p-1 transition duration-300 cursor-pointer ${
+                          form.allowFraming ? 'bg-emerald-600 justify-end' : 'bg-gray-300 justify-start'
+                        }`}
                       >
-                        <Plus size={13} /> Add Bundle
+                        <div className="bg-white w-4 h-4 rounded-full shadow-md transform transition" />
                       </button>
                     </div>
 
-                    {form.bundles.length === 0 && (
-                      <p className="text-xs text-gray-400 text-center py-4">No bundles yet. Click "Add Bundle" to start.</p>
-                    )}
-
-                    <div className="space-y-3">
-                      {form.bundles.map((bundle, i) => (
-                        <div key={i} className="p-4 bg-gray-50 border border-gray-200 rounded-2xl space-y-3">
-                          {/* Bundle header */}
-                          <div className="flex items-center justify-between">
-                            <span className="text-[11px] font-extrabold text-gray-600 uppercase tracking-wide">Bundle #{i + 1}</span>
-                            <button
-                              type="button"
-                              onClick={() => removeBundle(i)}
-                              className="p-1 text-red-500 hover:bg-red-50 rounded-lg transition"
-                            >
-                              <Trash2 size={13} />
-                            </button>
+                    {form.allowFraming && (
+                      <div className="space-y-4 p-4 bg-emerald-50/50 rounded-2xl border border-emerald-200">
+                        {/* Frame Pricing & Badge */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          <div>
+                            <label className="text-xs font-bold text-gray-700 block mb-1">
+                              Frame Add-on Price (₹ / item)
+                            </label>
+                            <div className="relative">
+                              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-gray-500">₹</span>
+                              <input
+                                type="number"
+                                min={0}
+                                value={form.framePrice || ''}
+                                onChange={e => setField('framePrice', Number(e.target.value))}
+                                className="w-full text-xs pl-7 pr-3 py-2.5 bg-white border border-gray-300 rounded-xl outline-none focus:ring-2 focus:ring-black font-black text-gray-900"
+                                placeholder="250"
+                              />
+                            </div>
+                            <span className="text-[10px] text-gray-500 mt-1 block">Added to base price when customer selects framing</span>
                           </div>
 
-                          {/* Bundle label */}
-                          {/* Bundle label + display style + preview */}
-                          <div className="space-y-2">
-                            <label className="text-[10px] font-bold text-gray-500 block mb-1">Bundle Label (shown on button)</label>
+                          <div>
+                            <label className="text-xs font-bold text-gray-700 block mb-1">
+                              Frame Badge / Tag
+                            </label>
                             <input
                               type="text"
-                              value={bundle.label}
-                              onChange={e => updateBundle(i, 'label', e.target.value)}
-                              className="w-full text-xs p-2 bg-white border border-gray-200 rounded-lg outline-none focus:ring-1 focus:ring-black"
-                              placeholder="4 Posters (BUY 3 GET 1 FREE)"
+                              value={form.frameBadge || ''}
+                              onChange={e => setField('frameBadge', e.target.value)}
+                              className="w-full text-xs p-2.5 bg-white border border-gray-300 rounded-xl outline-none focus:ring-2 focus:ring-black"
+                              placeholder="e.g. Acrylic Shield, 3 Frames Set"
                             />
+                            <span className="text-[10px] text-gray-500 mt-1 block">Shown as a highlight badge next to framing checkbox</span>
+                          </div>
+                        </div>
 
-                            {/* Display Style Toggle */}
-                            <div className="flex items-center gap-3">
-                              <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wide">Button Style:</span>
-                              <div className="flex gap-1.5">
+                        {/* Supported Frame Styles */}
+                        <div className="space-y-2 pt-2 border-t border-emerald-200/60">
+                          <label className="text-xs font-extrabold text-gray-800 block">
+                            Supported Frame Styles & Finishes
+                          </label>
+                          <p className="text-[10px] text-gray-500">Select which frame styles customers can choose from:</p>
+
+                          <div className="flex flex-wrap gap-2 pt-1">
+                            {DEFAULT_FRAME_STYLES.map(styleName => {
+                              const isChecked = (form.frameStyles || []).includes(styleName);
+                              return (
                                 <button
+                                  key={styleName}
                                   type="button"
-                                  onClick={() => updateBundle(i, 'displayStyle', 'pill')}
-                                  className={`px-3 py-1 rounded-full text-[10px] font-extrabold border transition ${
-                                    (bundle.displayStyle ?? (i < 2 ? 'pill' : 'wide')) === 'pill'
-                                      ? 'bg-black text-white border-black'
-                                      : 'bg-white text-gray-500 border-gray-300 hover:border-black'
+                                  onClick={() => toggleFrameStyle(styleName)}
+                                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition border flex items-center gap-1.5 ${
+                                    isChecked
+                                      ? 'bg-black text-white border-black shadow-sm'
+                                      : 'bg-white text-gray-600 border-gray-300 hover:border-black'
                                   }`}
                                 >
-                                  ◉ Pill (compact)
+                                  {isChecked && <Check size={12} className="text-primary" />}
+                                  <span>{styleName}</span>
                                 </button>
+                              );
+                            })}
+
+                            {/* Additional custom styles */}
+                            {(form.frameStyles || []).filter(s => !DEFAULT_FRAME_STYLES.includes(s)).map(customStyle => (
+                              <span
+                                key={customStyle}
+                                className="px-3 py-1.5 rounded-xl text-xs font-bold bg-black text-white border border-black shadow-sm flex items-center gap-1.5"
+                              >
+                                <Check size={12} className="text-primary" />
+                                <span>{customStyle}</span>
                                 <button
                                   type="button"
-                                  onClick={() => updateBundle(i, 'displayStyle', 'wide')}
-                                  className={`px-3 py-1 rounded-full text-[10px] font-extrabold border transition ${
-                                    (bundle.displayStyle ?? (i < 2 ? 'pill' : 'wide')) === 'wide'
-                                      ? 'bg-black text-white border-black'
-                                      : 'bg-white text-gray-500 border-gray-300 hover:border-black'
-                                  }`}
+                                  onClick={() => removeFrameStyle(customStyle)}
+                                  className="ml-1 text-gray-400 hover:text-white"
                                 >
-                                  ▬ Wide (full row)
+                                  <X size={12} />
                                 </button>
-                              </div>
-                            </div>
-
-                            {/* Live Button Preview */}
-                            <div className="pt-1">
-                              <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wider block mb-1">Preview:</span>
-                              {(bundle.displayStyle ?? (i < 2 ? 'pill' : 'wide')) === 'pill' ? (
-                                <span className="inline-block py-1.5 px-4 rounded-full text-[11px] font-bold bg-black text-white">
-                                  {bundle.label || 'Bundle Label'}
-                                </span>
-                              ) : (
-                                <div className="w-full py-2 px-4 rounded-full text-[11px] font-bold bg-black text-white flex items-center justify-between">
-                                  <span>{bundle.label || 'Bundle Label'}</span>
-                                  <span className="text-primary text-xs">✓</span>
-                                </div>
-                              )}
-                            </div>
+                              </span>
+                            ))}
                           </div>
 
-                          {/* Row 1: Key / Total Units / Pay For / 📷 Images */}
-                          <div className="grid grid-cols-4 gap-2">
-                            <div>
-                              <label className="text-[10px] font-bold text-gray-500 block mb-1">Key (internal)</label>
-                              <input
-                                type="text"
-                                value={bundle.key}
-                                onChange={e => updateBundle(i, 'key', e.target.value)}
-                                className="w-full text-xs p-2 bg-white border border-gray-200 rounded-lg outline-none focus:ring-1 focus:ring-black"
-                                placeholder="4"
-                              />
+                          {/* Add Custom Style Input */}
+                          <div className="flex gap-2 pt-2">
+                            <input
+                              type="text"
+                              value={newFrameStyleInput}
+                              onChange={e => setNewFrameStyleInput(e.target.value)}
+                              onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addCustomFrameStyle(); } }}
+                              placeholder="Add another frame style (e.g. Gold Vintage Frame)..."
+                              className="flex-1 text-xs p-2.5 bg-white border border-gray-300 rounded-xl outline-none focus:ring-1 focus:ring-black"
+                            />
+                            <button
+                              type="button"
+                              onClick={addCustomFrameStyle}
+                              className="px-4 py-2 bg-gray-900 text-white rounded-xl text-xs font-bold hover:bg-black transition"
+                            >
+                              Add Style
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Customer View Live Preview */}
+                        <div className="pt-3 border-t border-emerald-200/60 space-y-2">
+                          <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">
+                            Storefront Customer Preview:
+                          </span>
+                          <div className="p-3 bg-white rounded-2xl border border-gray-200 shadow-sm space-y-2.5">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2.5">
+                                <input type="checkbox" checked={true} readOnly className="w-4 h-4 rounded accent-black" />
+                                <span className="text-xs font-extrabold text-gray-900">
+                                  Add Frame (+₹{form.framePrice || 250} / item)
+                                </span>
+                              </div>
+                              {form.frameBadge && (
+                                <span className="text-[10px] bg-primary/20 text-yellow-900 font-extrabold px-2.5 py-0.5 rounded-full">
+                                  {form.frameBadge}
+                                </span>
+                              )}
                             </div>
-                            <div>
-                              <label className="text-[10px] font-bold text-gray-500 block mb-1">Total Units</label>
-                              <input
-                                type="number"
-                                value={bundle.totalUnits}
-                                onChange={e => updateBundle(i, 'totalUnits', e.target.value)}
-                                className="w-full text-xs p-2 bg-white border border-gray-200 rounded-lg outline-none focus:ring-1 focus:ring-black font-bold"
-                                min={1}
-                              />
-                            </div>
-                            <div>
-                              <label className="text-[10px] font-bold text-gray-500 block mb-1">Pay For (units)</label>
-                              <input
-                                type="number"
-                                step="0.5"
-                                value={bundle.payFor}
-                                onChange={e => updateBundle(i, 'payFor', e.target.value)}
-                                className="w-full text-xs p-2 bg-white border border-gray-200 rounded-lg outline-none focus:ring-1 focus:ring-black font-bold"
-                                min={0.5}
-                              />
-                            </div>
-                            <div>
-                              <label className="text-[10px] font-bold text-amber-700 block mb-1">📷 Images</label>
-                              <input
-                                type="number"
-                                value={bundle.imageCount ?? 1}
-                                onChange={e => updateBundle(i, 'imageCount', e.target.value)}
-                                className="w-full text-xs p-2 bg-amber-50 border border-amber-300 rounded-lg outline-none focus:ring-1 focus:ring-amber-400 font-black text-amber-900"
-                                min={1}
-                                max={50}
-                                title="Number of image upload buttons shown to the customer for this bundle"
-                              />
+                            <div className="flex flex-wrap gap-1.5 pt-1">
+                              {(form.frameStyles && form.frameStyles.length > 0 ? form.frameStyles : DEFAULT_FRAME_STYLES).map((s, idx) => (
+                                <span
+                                  key={idx}
+                                  className={`text-[10px] font-bold px-2.5 py-1 rounded-lg border ${
+                                    idx === 0 ? 'bg-black text-white border-black' : 'bg-gray-50 text-gray-700 border-gray-200'
+                                  }`}
+                                >
+                                  {s} {idx === 0 && '✓'}
+                                </span>
+                              ))}
                             </div>
                           </div>
                         </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* ── TAB 4: PRICE MATRIX ── */}
-                {expandedSection === 'matrix' && (
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <h4 className="text-xs font-extrabold text-gray-800">Size × Bundle Price Matrix</h4>
-                        <p className="text-[10px] text-gray-500 mt-0.5">Set a custom price for every size + bundle combination. Leave 0 = auto-calculated.</p>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          // Auto-fill all cells from basePrice × payFor
-                          const matrix = {};
-                          form.defaultSizes.forEach(sz => {
-                            matrix[sz.code] = {};
-                            form.bundles.forEach(b => {
-                              if (b.fixedTotal > 0) {
-                                matrix[sz.code][b.key] = b.fixedTotal;
-                              } else {
-                                matrix[sz.code][b.key] = Math.round((sz.basePrice || 129) * b.payFor);
-                              }
-                            });
-                          });
-                          setField('priceMatrix', { ...(form.priceMatrix || {}), ...matrix });
-                        }}
-                        className="flex items-center gap-1.5 text-[10px] font-extrabold bg-black text-white px-3 py-2 rounded-xl hover:bg-neutral-800 transition whitespace-nowrap"
-                      >
-                        ⚡ Auto-fill all
-                      </button>
-                    </div>
-
-                    {form.defaultSizes.length === 0 || form.bundles.length === 0 ? (
-                      <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-xl text-xs text-yellow-800 font-semibold">
-                        ⚠️ Add sizes (Tab 2) and bundles (Tab 3) first, then come back to set prices.
-                      </div>
-                    ) : (
-                      <div className="overflow-x-auto">
-                        <table className="w-full text-xs border-collapse">
-                          <thead>
-                            <tr>
-                              <th className="text-left p-2 bg-gray-100 rounded-tl-xl font-extrabold text-gray-700 text-[10px] uppercase tracking-wide min-w-[110px]">
-                                Bundle \ Size
-                              </th>
-                              {form.defaultSizes.map(sz => (
-                                <th key={sz.code} className="p-2 bg-gray-100 font-extrabold text-gray-700 text-[10px] uppercase tracking-wide text-center min-w-[90px] last:rounded-tr-xl">
-                                  {sz.label}<br/>
-                                  <span className="font-normal text-gray-400 normal-case">{sz.dimensions}</span>
-                                </th>
-                              ))}
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {form.bundles.map((bundle, bi) => (
-                              <tr key={bundle.key} className={bi % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                                <td className="p-2 font-bold text-gray-700 text-[10px] border-r border-gray-200">
-                                  {bundle.label}
-                                </td>
-                                {form.defaultSizes.map(sz => {
-                                  const val = form.priceMatrix?.[sz.code]?.[bundle.key];
-                                  const autoVal = bundle.fixedTotal > 0
-                                    ? bundle.fixedTotal
-                                    : Math.round((sz.basePrice || 129) * bundle.payFor);
-                                  return (
-                                    <td key={sz.code} className="p-1.5 text-center">
-                                      <div className="relative">
-                                        <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[10px] font-black text-green-700">₹</span>
-                                        <input
-                                          type="number"
-                                          value={val || ''}
-                                          placeholder={autoVal}
-                                          onChange={e => {
-                                            const n = Number(e.target.value);
-                                            setField('priceMatrix', {
-                                              ...(form.priceMatrix || {}),
-                                              [sz.code]: {
-                                                ...((form.priceMatrix || {})[sz.code] || {}),
-                                                [bundle.key]: n > 0 ? n : undefined
-                                              }
-                                            });
-                                          }}
-                                          className={`w-full text-[11px] pl-5 pr-1 py-1.5 rounded-lg border outline-none focus:ring-2 focus:ring-green-400 font-black text-center ${
-                                            val > 0
-                                              ? 'bg-green-50 border-green-300 text-green-900'
-                                              : 'bg-gray-50 border-gray-200 text-gray-500'
-                                          }`}
-                                          min={0}
-                                        />
-                                        {!val && (
-                                          <span className="absolute -bottom-3.5 left-0 right-0 text-center text-[8px] text-gray-400 font-semibold">
-                                            auto ₹{autoVal}
-                                          </span>
-                                        )}
-                                      </div>
-                                    </td>
-                                  );
-                                })}
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                        <p className="text-[10px] text-gray-400 mt-6">💡 Cells with a value override the auto-calculated price. Gray = auto-calculated. Green = custom fixed price.</p>
                       </div>
                     )}
                   </div>
@@ -840,7 +859,7 @@ export default function ManageCustomPrints() {
                     <button
                       type="button"
                       onClick={() => {
-                        const order = ['basic', 'sizes', 'bundles', 'matrix'];
+                        const order = ['basic', 'sizes', 'framing'];
                         const idx = order.indexOf(expandedSection);
                         setExpandedSection(order[Math.max(0, idx - 1)]);
                       }}
@@ -849,11 +868,11 @@ export default function ManageCustomPrints() {
                       ← Back
                     </button>
                   )}
-                  {expandedSection !== 'matrix' && (
+                  {expandedSection !== 'framing' && (
                     <button
                       type="button"
                       onClick={() => {
-                        const order = ['basic', 'sizes', 'bundles', 'matrix'];
+                        const order = ['basic', 'sizes', 'framing'];
                         const idx = order.indexOf(expandedSection);
                         setExpandedSection(order[Math.min(order.length - 1, idx + 1)]);
                       }}

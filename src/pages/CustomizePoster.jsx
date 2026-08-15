@@ -58,9 +58,17 @@ export default function CustomizePoster() {
 
   const currentSizeObj = sizeOptions.find(s => s.code === selectedSize) || sizeOptions[0];
 
-  // Pricing: size base price × quantity
+  // Dynamic framing configuration from admin panel
+  const allowFraming = currentTypeObj.allowFraming ?? (selectedType === 'single' || selectedType?.startsWith('split'));
+  const framePrice = currentTypeObj.framePrice ?? 250;
+  const frameStyles = currentTypeObj.frameStyles && currentTypeObj.frameStyles.length > 0
+    ? currentTypeObj.frameStyles
+    : ['Classic Matte Black Frame', 'Natural Oak Wood Frame', 'Modern White Frame', 'Dark Walnut Frame'];
+  const frameBadge = currentTypeObj.frameBadge || 'Acrylic Shield';
+
+  // Pricing: (size base price + frame add-on) × quantity
   const baseP = currentSizeObj.basePrice || 129;
-  const frameAddon = wantsFrame ? 250 : 0;
+  const frameAddon = wantsFrame ? framePrice : 0;
   const perUnitPrice = baseP + frameAddon;
   const totalPrice = perUnitPrice * selectedQty;
 
@@ -541,24 +549,54 @@ export default function CustomizePoster() {
                 </div>
               </div>
 
-              {/* Optional Framing Checkbox (for Single & Split posters) */}
-              {(selectedType === 'single' || selectedType?.startsWith('split')) && (
-                <div className="p-3 bg-gray-50 rounded-2xl border border-gray-200 flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <input 
-                      type="checkbox"
-                      id="frameToggle"
-                      checked={wantsFrame}
-                      onChange={(e) => setWantsFrame(e.target.checked)}
-                      className="w-4 h-4 rounded text-black accent-black cursor-pointer"
-                    />
-                    <label htmlFor="frameToggle" className="text-xs font-bold text-gray-900 cursor-pointer">
-                      Add Classic Matte Black Frame (+₹250 / frame)
-                    </label>
+              {/* Optional Framing Option (Admin Configurable) */}
+              {allowFraming && (
+                <div className="p-4 bg-gray-50 rounded-2xl border border-gray-200 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <input 
+                        type="checkbox"
+                        id="frameToggle"
+                        checked={wantsFrame}
+                        onChange={(e) => setWantsFrame(e.target.checked)}
+                        className="w-4 h-4 rounded text-black accent-black cursor-pointer"
+                      />
+                      <label htmlFor="frameToggle" className="text-xs font-extrabold text-gray-900 cursor-pointer">
+                        Add Framing (+₹{framePrice} / {selectedType === 'photobooth' ? 'strip' : selectedType?.startsWith('split') ? 'set' : 'print'})
+                      </label>
+                    </div>
+                    {frameBadge && (
+                      <span className="text-[10px] bg-primary/20 text-yellow-900 font-extrabold px-2.5 py-0.5 rounded-full">
+                        {frameBadge}
+                      </span>
+                    )}
                   </div>
-                  <span className="text-[10px] bg-primary/20 text-yellow-900 font-extrabold px-2 py-0.5 rounded-full">
-                    Acrylic Shield
-                  </span>
+
+                  {/* Frame Style Selector (Visible when framing checked) */}
+                  {wantsFrame && frameStyles.length > 0 && (
+                    <div className="pt-2 border-t border-gray-200/80 space-y-2">
+                      <label className="text-[11px] font-bold text-gray-700 block">
+                        Select Frame Finish:
+                      </label>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        {frameStyles.map((style) => (
+                          <button
+                            key={style}
+                            type="button"
+                            onClick={() => setSelectedFrameStyle(style)}
+                            className={`py-2 px-3 rounded-xl text-xs font-bold text-left transition border flex items-center justify-between ${
+                              selectedFrameStyle === style
+                                ? 'bg-black text-white border-black shadow-sm'
+                                : 'bg-white text-gray-800 border-gray-200 hover:border-black'
+                            }`}
+                          >
+                            <span>{style}</span>
+                            {selectedFrameStyle === style && <Check size={13} className="text-primary" />}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 
