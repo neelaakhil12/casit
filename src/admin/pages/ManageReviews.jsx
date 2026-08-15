@@ -73,19 +73,19 @@ export default function ManageReviews({ initialTab = 'videos' }) {
         .select('*')
         .order('created_at', { ascending: false });
 
-      if (!error && Array.isArray(data)) {
+      if (!error && Array.isArray(data) && data.length > 0) {
         const photos = data.filter(d => !d.video_url);
         const videos = data.filter(d => !!d.video_url);
-        setPhotoReviews(photos);
-        setVideoReviews(videos);
+        setPhotoReviews(photos.length > 0 ? photos : defaultVerifiedReviews);
+        setVideoReviews(videos.length > 0 ? videos : defaultVideoReviews);
       } else {
-        setPhotoReviews([]);
-        setVideoReviews([]);
+        setPhotoReviews(defaultVerifiedReviews);
+        setVideoReviews(defaultVideoReviews);
       }
     } catch (err) {
       console.error('Reviews fetch notice:', err);
-      setPhotoReviews([]);
-      setVideoReviews([]);
+      setPhotoReviews(defaultVerifiedReviews);
+      setVideoReviews(defaultVideoReviews);
     } finally {
       setLoading(false);
     }
