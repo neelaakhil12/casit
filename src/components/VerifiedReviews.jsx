@@ -15,90 +15,9 @@ import {
   ShoppingBag
 } from 'lucide-react';
 
-// Default Verified Reviews & Video Reels
-export const defaultVerifiedReviews = [
-  {
-    id: 1,
-    image_url: 'https://images.unsplash.com/photo-1513694203232-719a280e022f?q=80&w=600&auto=format&fit=crop',
-    customer_name: 'Ananya S.',
-    location: 'Mumbai',
-    caption: 'Completely transformed my bedroom wall! The 300 GSM matte paper quality is unmatched.',
-    rating: 5
-  },
-  {
-    id: 2,
-    image_url: 'https://images.unsplash.com/photo-1542751371-adc38448a05e?q=80&w=600&auto=format&fit=crop',
-    customer_name: 'Rohan V.',
-    location: 'Bengaluru',
-    caption: 'My gaming desk looks like a streamer battlestation now. Super sharp printing!',
-    rating: 5
-  },
-  {
-    id: 3,
-    image_url: 'https://images.unsplash.com/photo-1563245372-f21724e3856d?q=80&w=600&auto=format&fit=crop',
-    customer_name: 'Pooja K.',
-    location: 'Delhi',
-    caption: 'The motivational quote posters in the study room give so much positive energy.',
-    rating: 5
-  },
-  {
-    id: 4,
-    image_url: 'https://images.unsplash.com/photo-1462331940025-496dfbfc7564?q=80&w=600&auto=format&fit=crop',
-    customer_name: 'Vikram M.',
-    location: 'Hyderabad',
-    caption: 'The Interstellar black hole split canvas is huge and the colors are out of this world.',
-    rating: 5
-  },
-  {
-    id: 5,
-    image_url: 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?q=80&w=600&auto=format&fit=crop',
-    customer_name: 'Sneha R.',
-    location: 'Pune',
-    caption: 'Framing is solid and wooden borders are very clean. 10/10 recommendation.',
-    rating: 5
-  },
-  {
-    id: 6,
-    image_url: 'https://images.unsplash.com/photo-1503376780353-7e6692767b70?q=80&w=600&auto=format&fit=crop',
-    customer_name: 'Kabir D.',
-    location: 'Chennai',
-    caption: 'Porsche 911 GT3 RS poster looks insane next to my racing simulator setup.',
-    rating: 5
-  }
-];
-
-export const defaultVideoReviews = [
-  {
-    id: 'v1',
-    video_url: 'https://assets.mixkit.co/videos/preview/mixkit-girl-in-neon-light-1230-large.mp4',
-    customer_name: 'Megha V.',
-    handle: '@megha.vibes',
-    caption: 'Unboxing my 18-poster pack from CASIT! The 300 GSM paper is so thick ✨',
-    views: '42.5K',
-    likes: '3.8K',
-    tagged_product: 'Ultimate Anime 18-Poster Pack'
-  },
-  {
-    id: 'v2',
-    video_url: 'https://assets.mixkit.co/videos/preview/mixkit-young-man-standing-in-front-of-a-graffiti-wall-41617-large.mp4',
-    customer_name: 'Aman Ray',
-    handle: '@aman_setups',
-    caption: 'POV: Setting up the Ferrari F1 split canvas on my room wall 🏎️💨',
-    views: '89.1K',
-    likes: '7.2K',
-    tagged_product: 'Ferrari SF-24 Split Triptych'
-  },
-  {
-    id: 'v3',
-    video_url: 'https://assets.mixkit.co/videos/preview/mixkit-woman-decorating-a-room-with-lights-42526-large.mp4',
-    customer_name: 'Simran K.',
-    handle: '@simran_decor',
-    caption: 'Decorating my college dorm wall with retro polaroids & fairy lights! 💖',
-    views: '120K',
-    likes: '14.5K',
-    tagged_product: '50 Retro Polaroid Prints Pack'
-  }
-];
+// Verified Reviews Data (strictly real database items only)
+export const defaultVerifiedReviews = [];
+export const defaultVideoReviews = [];
 
 // Guaranteed Autoplay Video Element without static preview cover
 function ReelCardVideo({ src, isUnmuted }) {
@@ -151,8 +70,8 @@ function ReelCardVideo({ src, isUnmuted }) {
 }
 
 export default function VerifiedReviews() {
-  const [photoReviews, setPhotoReviews] = useState(defaultVerifiedReviews);
-  const [videoReviews, setVideoReviews] = useState(defaultVideoReviews);
+  const [photoReviews, setPhotoReviews] = useState([]);
+  const [videoReviews, setVideoReviews] = useState([]);
   
   // Modals
   const [activePhotoModal, setActivePhotoModal] = useState(null);
@@ -172,19 +91,19 @@ export default function VerifiedReviews() {
         .select('*')
         .order('created_at', { ascending: false });
 
-      if (!error && Array.isArray(data) && data.length > 0) {
+      if (!error && Array.isArray(data)) {
         const dbPhotos = data.filter(item => item && !item.video_url && (item.image_url || item.thumbnail));
         const dbVideos = data.filter(item => item && item.video_url);
-        setPhotoReviews(dbPhotos.length > 0 ? dbPhotos : defaultVerifiedReviews);
-        setVideoReviews(dbVideos.length > 0 ? dbVideos : defaultVideoReviews);
+        setPhotoReviews(dbPhotos);
+        setVideoReviews(dbVideos);
       } else {
-        setPhotoReviews(defaultVerifiedReviews);
-        setVideoReviews(defaultVideoReviews);
+        setPhotoReviews([]);
+        setVideoReviews([]);
       }
     } catch (err) {
       console.warn('Error loading verified reviews:', err);
-      setPhotoReviews(defaultVerifiedReviews);
-      setVideoReviews(defaultVideoReviews);
+      setPhotoReviews([]);
+      setVideoReviews([]);
     }
   };
 
