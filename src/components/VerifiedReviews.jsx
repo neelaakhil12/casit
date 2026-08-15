@@ -82,6 +82,18 @@ export default function VerifiedReviews() {
 
   useEffect(() => {
     fetchReviews();
+
+    // Supabase Realtime Auto-Sync: storefront instantly updates when admin adds or deletes!
+    const channel = supabase
+      .channel('realtime_verified_reviews')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'verified_reviews' }, () => {
+        fetchReviews();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   const fetchReviews = async () => {
@@ -120,14 +132,24 @@ export default function VerifiedReviews() {
   // Sound state for individual cards in the feed
   const [unmutedCardId, setUnmutedCardId] = useState(null);
 
-  // Dual Row Photo reviews setup
-  const midIndex = Math.ceil(safePhotos.length / 2);
-  const row1 = safePhotos.slice(0, midIndex);
-  const row2 = safePhotos.slice(midIndex);
+  // Helper to ensure enough cards for continuous seamless marquee
+  const duplicateForMarquee = (arr, minCount = 8) => {
+    if (!arr || arr.length === 0) return [];
+    let result = [...arr];
+    while (result.length < minCount) {
+      result = [...result, ...arr];
+    }
+    return [...result, ...result]; // 2x loop for marquee
+  };
 
-  const row1Duplicated = row1.length > 0 ? [...row1, ...row1, ...row1] : [];
-  const row2Duplicated = row2.length > 0 ? [...row2, ...row2, ...row2] : [];
-  const videosDuplicated = safeVideos.length > 0 ? [...safeVideos, ...safeVideos, ...safeVideos] : [];
+  // Photo rows setup
+  const midIndex = Math.max(1, Math.ceil(safePhotos.length / 2));
+  const row1Raw = safePhotos.slice(0, midIndex);
+  const row2Raw = safePhotos.length > 1 ? safePhotos.slice(midIndex) : safePhotos;
+
+  const row1Duplicated = duplicateForMarquee(row1Raw, 6);
+  const row2Duplicated = duplicateForMarquee(row2Raw, 6);
+  const videosDuplicated = duplicateForMarquee(safeVideos, 6);
 
   const handleTogglePlay = () => {
     if (modalVideoRef.current) {
@@ -187,7 +209,7 @@ export default function VerifiedReviews() {
                     className="group relative w-36 h-48 sm:w-56 sm:h-72 rounded-2xl sm:rounded-3xl overflow-hidden cursor-pointer shadow-md hover:shadow-2xl border border-gray-100 transition-all duration-300 shrink-0 bg-gray-100"
                   >
                     <img
-                      src={review.image_url}
+                      src={review.image_url || review.thumbnail}
                       alt={review.customer_name || 'Verified Customer Review'}
                       className="w-full h-full object-cover group-hover:scale-110 transition duration-500"
                       loading="lazy"
@@ -218,7 +240,7 @@ export default function VerifiedReviews() {
                     className="group relative w-36 h-48 sm:w-56 sm:h-72 rounded-2xl sm:rounded-3xl overflow-hidden cursor-pointer shadow-md hover:shadow-2xl border border-gray-100 transition-all duration-300 shrink-0 bg-gray-100"
                   >
                     <img
-                      src={review.image_url}
+                      src={review.image_url || review.thumbnail}
                       alt={review.customer_name || 'Verified Customer Review'}
                       className="w-full h-full object-cover group-hover:scale-110 transition duration-500"
                       loading="lazy"
