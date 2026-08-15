@@ -231,6 +231,7 @@ export async function saveHubProducts(products) {
 
   // Sync to Supabase Cloud DB so Localhost & Vercel are 100% identical
   try {
+    const activeIds = sanitized.map(p => p.id);
     const dbPayload = sanitized.map((p, idx) => ({
       id: p.id,
       title_script: p.titleScript,
@@ -252,8 +253,32 @@ export async function saveHubProducts(products) {
     }));
 
     await supabase.from('custom_print_types').upsert(dbPayload, { onConflict: 'id' });
+
+    // Clean up / prune any deleted records from Supabase
+    if (activeIds.length > 0) {
+      const { data: allInDb } = await supabase.from('custom_print_types').select('id');
+      if (allInDb && allInDb.length > 0) {
+        const toDelete = allInDb.filter(row => !activeIds.includes(row.id)).map(row => row.id);
+        if (toDelete.length > 0) {
+          await supabase.from('custom_print_types').delete().in('id', toDelete);
+        }
+      }
+    }
   } catch (e) {
     console.warn('Supabase custom_print_types sync skipped:', e);
+  }
+}
+
+/** Delete a specific product directly from Supabase Cloud DB and local cache */
+export async function deleteHubProductFromDB(id, remainingProducts) {
+  try {
+    if (remainingProducts) {
+      const sanitized = sanitizeItems(remainingProducts);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(sanitized));
+    }
+    await supabase.from('custom_print_types').delete().eq('id', id);
+  } catch (e) {
+    console.warn('Supabase delete error:', e);
   }
 }
 

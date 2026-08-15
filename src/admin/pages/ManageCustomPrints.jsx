@@ -27,6 +27,7 @@ import {
   getHubProducts,
   fetchHubProductsFromDB,
   saveHubProducts,
+  deleteHubProductFromDB,
   defaultHubProducts,
   DEFAULT_FRAME_STYLES
 } from '../../data/customPrints';
@@ -152,11 +153,17 @@ export default function ManageCustomPrints() {
     }
   };
 
-  const handleDelete = (idx) => {
-    if (!window.confirm(`Delete "${products[idx]?.titleMain}"? This removes it from the Design Your Own page.`)) return;
+  const handleDelete = async (idx) => {
+    const itemToDelete = products[idx];
+    if (!itemToDelete) return;
+    if (!window.confirm(`Delete "${itemToDelete?.titleMain}"? This removes it from the Design Your Own page.`)) return;
+    
     const updated = products.filter((_, i) => i !== idx);
-    persist(updated);
-    setSuccessMsg(`"${products[idx]?.titleMain || 'Print'}" deleted.`);
+    setProducts(updated);
+    
+    await deleteHubProductFromDB(itemToDelete.id, updated);
+    window.dispatchEvent(new StorageEvent('storage', { key: 'casit_custom_print_types' }));
+    setSuccessMsg(`"${itemToDelete?.titleMain || 'Print'}" deleted.`);
     setTimeout(() => setSuccessMsg(''), 3000);
   };
 
