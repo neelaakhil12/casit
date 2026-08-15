@@ -185,7 +185,7 @@ app.post('/api/admin/login', async (req, res) => {
 // Admin Forgot Password - Sends Nodemailer Email to casithelpline@gmail.com
 app.post('/api/admin/forgot-password', async (req, res) => {
   try {
-    const { email } = req.body;
+    const { email, origin } = req.body;
     if (!email || !email.includes('@')) {
       return res.status(400).json({ success: false, message: 'Please enter a valid admin email address.' });
     }
@@ -198,7 +198,20 @@ app.post('/api/admin/forgot-password', async (req, res) => {
 
     adminResetStore.set(resetToken, { email: cleanEmail, expiresAt });
 
-    const hostHeader = req.headers.origin || 'http://localhost:5173';
+    // Determine domain (request body origin, headers origin, referer, or live Vercel URL)
+    let hostHeader = origin || req.headers.origin;
+    if (!hostHeader && req.headers.referer) {
+      try {
+        hostHeader = new URL(req.headers.referer).origin;
+      } catch (_) {}
+    }
+    if (!hostHeader || hostHeader.includes('localhost') && process.env.NODE_ENV === 'production') {
+      hostHeader = process.env.APP_URL || 'https://casit.vercel.app';
+    }
+    if (!hostHeader) {
+      hostHeader = 'https://casit.vercel.app';
+    }
+
     const resetLink = `${hostHeader}/admin/reset-password?token=${resetToken}&email=${encodeURIComponent(cleanEmail)}`;
 
     const mailOptions = {

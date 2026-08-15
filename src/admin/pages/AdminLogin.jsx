@@ -101,7 +101,10 @@ export default function AdminLogin({ onLogin }) {
       const res = await fetch('/api/admin/forgot-password', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: resetEmail.trim() })
+        body: JSON.stringify({
+          email: resetEmail.trim(),
+          origin: window.location.origin
+        })
       });
 
       const data = await res.json();
