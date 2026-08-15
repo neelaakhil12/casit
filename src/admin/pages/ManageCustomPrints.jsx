@@ -160,11 +160,11 @@ export default function ManageCustomPrints() {
   // Size row helpers
   const addSize = () => setForm(f => ({
     ...f,
-    defaultSizes: [...f.defaultSizes, { code: `S${Date.now()}`, label: 'New Size', dimensions: '', basePrice: 199 }]
+    defaultSizes: [...f.defaultSizes, { code: `S${Date.now()}`, label: 'New Size', dimensions: '', basePrice: 199, framePrice: 250 }]
   }));
   const updateSize = (i, key, val) => setForm(f => {
     const s = [...f.defaultSizes];
-    s[i] = { ...s[i], [key]: key === 'basePrice' ? Number(val) : val };
+    s[i] = { ...s[i], [key]: key === 'basePrice' || key === 'framePrice' ? Number(val) : val };
     return { ...f, defaultSizes: s };
   });
   const removeSize = (i) => setForm(f => ({
@@ -375,7 +375,7 @@ export default function ManageCustomPrints() {
                 <div className="flex flex-wrap gap-1.5 pt-1">
                   {item.defaultSizes?.map((sz, i) => (
                     <span key={i} className="text-[10px] font-bold bg-gray-100 text-gray-700 px-2 py-0.5 rounded-lg">
-                      {sz.label}: ₹{sz.basePrice}
+                      {sz.label}: Poster ₹{sz.basePrice}{item.allowFraming ? ` | Frame ₹${sz.framePrice ?? item.framePrice ?? 250}` : ''}
                     </span>
                   ))}
                 </div>
@@ -621,62 +621,92 @@ export default function ManageCustomPrints() {
                     )}
 
                     <div className="space-y-3">
-                      {form.defaultSizes.map((size, i) => (
-                        <div key={i} className="p-4 bg-gray-50 border border-gray-200 rounded-2xl space-y-3">
-                          <div className="flex items-center justify-between">
-                            <span className="text-[11px] font-extrabold text-gray-600 uppercase tracking-wide">Size #{i + 1}</span>
-                            <button
-                              type="button"
-                              onClick={() => removeSize(i)}
-                              className="p-1 text-red-500 hover:bg-red-50 rounded-lg transition"
-                            >
-                              <Trash2 size={13} />
-                            </button>
+                      {form.defaultSizes.map((size, i) => {
+                        const posterP = Number(size.basePrice) || 0;
+                        const frameP = Number(size.framePrice ?? form.framePrice ?? 0);
+                        const bothP = posterP + frameP;
+                        return (
+                          <div key={i} className="p-4 bg-gray-50 border border-gray-200 rounded-2xl space-y-3">
+                            <div className="flex items-center justify-between">
+                              <span className="text-[11px] font-extrabold text-gray-600 uppercase tracking-wide">Size #{i + 1}</span>
+                              <button
+                                type="button"
+                                onClick={() => removeSize(i)}
+                                className="p-1 text-red-500 hover:bg-red-50 rounded-lg transition"
+                              >
+                                <Trash2 size={13} />
+                              </button>
+                            </div>
+                            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
+                              <div>
+                                <label className="text-[10px] font-bold text-gray-500 block mb-1">Code (internal)</label>
+                                <input
+                                  type="text"
+                                  value={size.code}
+                                  onChange={e => updateSize(i, 'code', e.target.value)}
+                                  className="w-full text-xs p-2 bg-white border border-gray-200 rounded-lg outline-none focus:ring-1 focus:ring-black"
+                                  placeholder="A4"
+                                />
+                              </div>
+                              <div>
+                                <label className="text-[10px] font-bold text-gray-500 block mb-1">Display Label</label>
+                                <input
+                                  type="text"
+                                  value={size.label}
+                                  onChange={e => updateSize(i, 'label', e.target.value)}
+                                  className="w-full text-xs p-2 bg-white border border-gray-200 rounded-lg outline-none focus:ring-1 focus:ring-black"
+                                  placeholder="A4"
+                                />
+                              </div>
+                              <div>
+                                <label className="text-[10px] font-bold text-gray-500 block mb-1">Dimensions</label>
+                                <input
+                                  type="text"
+                                  value={size.dimensions}
+                                  onChange={e => updateSize(i, 'dimensions', e.target.value)}
+                                  className="w-full text-xs p-2 bg-white border border-gray-200 rounded-lg outline-none focus:ring-1 focus:ring-black"
+                                  placeholder="8.3 x 11.7 in"
+                                />
+                              </div>
+                              <div>
+                                <label className="text-[10px] font-bold text-blue-700 block mb-1">🖼️ Poster Price (₹)</label>
+                                <input
+                                  type="number"
+                                  value={size.basePrice || ''}
+                                  onChange={e => updateSize(i, 'basePrice', e.target.value)}
+                                  className="w-full text-xs p-2 bg-blue-50 border border-blue-300 rounded-lg outline-none focus:ring-1 focus:ring-blue-500 font-black text-blue-950"
+                                  min={0}
+                                  placeholder="129"
+                                />
+                              </div>
+                              <div>
+                                <label className="text-[10px] font-bold text-amber-700 block mb-1">🔲 Frame Price (₹)</label>
+                                <input
+                                  type="number"
+                                  value={size.framePrice !== undefined ? size.framePrice : (form.framePrice || '')}
+                                  onChange={e => updateSize(i, 'framePrice', e.target.value)}
+                                  className="w-full text-xs p-2 bg-amber-50 border border-amber-300 rounded-lg outline-none focus:ring-1 focus:ring-amber-500 font-black text-amber-950"
+                                  min={0}
+                                  placeholder="250"
+                                />
+                              </div>
+                            </div>
+
+                            {/* Live Pricing Breakdown Bar */}
+                            <div className="p-2 bg-white rounded-xl border border-gray-200 flex flex-wrap items-center justify-between text-[11px] gap-2">
+                              <span className="font-bold text-blue-800">
+                                🖼️ Poster Only: <strong className="font-black">₹{posterP}</strong>
+                              </span>
+                              <span className="font-bold text-amber-800">
+                                🔲 Frame Only: <strong className="font-black">₹{frameP}</strong>
+                              </span>
+                              <span className="font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-lg border border-emerald-200">
+                                ✨ Poster + Frame: <strong className="font-black">₹{bothP}</strong>
+                              </span>
+                            </div>
                           </div>
-                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                            <div>
-                              <label className="text-[10px] font-bold text-gray-500 block mb-1">Code (internal)</label>
-                              <input
-                                type="text"
-                                value={size.code}
-                                onChange={e => updateSize(i, 'code', e.target.value)}
-                                className="w-full text-xs p-2 bg-white border border-gray-200 rounded-lg outline-none focus:ring-1 focus:ring-black"
-                                placeholder="A4"
-                              />
-                            </div>
-                            <div>
-                              <label className="text-[10px] font-bold text-gray-500 block mb-1">Display Label</label>
-                              <input
-                                type="text"
-                                value={size.label}
-                                onChange={e => updateSize(i, 'label', e.target.value)}
-                                className="w-full text-xs p-2 bg-white border border-gray-200 rounded-lg outline-none focus:ring-1 focus:ring-black"
-                                placeholder="A4"
-                              />
-                            </div>
-                            <div>
-                              <label className="text-[10px] font-bold text-gray-500 block mb-1">Dimensions</label>
-                              <input
-                                type="text"
-                                value={size.dimensions}
-                                onChange={e => updateSize(i, 'dimensions', e.target.value)}
-                                className="w-full text-xs p-2 bg-white border border-gray-200 rounded-lg outline-none focus:ring-1 focus:ring-black"
-                                placeholder="8.3 x 11.7 in"
-                              />
-                            </div>
-                            <div>
-                              <label className="text-[10px] font-bold text-green-700 block mb-1">Base Price (₹)</label>
-                              <input
-                                type="number"
-                                value={size.basePrice}
-                                onChange={e => updateSize(i, 'basePrice', e.target.value)}
-                                className="w-full text-xs p-2 bg-green-50 border border-green-300 rounded-lg outline-none focus:ring-1 focus:ring-green-500 font-black text-green-900"
-                                min={1}
-                              />
-                            </div>
-                          </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   </div>
                 )}
