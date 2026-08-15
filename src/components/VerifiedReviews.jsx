@@ -230,6 +230,9 @@ export default function VerifiedReviews() {
     return null;
   }
 
+  // Sound state for individual cards in the feed
+  const [unmutedCardId, setUnmutedCardId] = useState(null);
+
   // Dual Row Photo reviews setup
   const midIndex = Math.ceil(photoReviews.length / 2);
   const row1 = photoReviews.slice(0, midIndex);
@@ -364,68 +367,90 @@ export default function VerifiedReviews() {
               </h3>
             </div>
             <span className="text-xs text-gray-500 font-semibold mt-1 sm:mt-0">
-              Hover to pause • Click to watch full video
+              Autoplays on mute • Click sound icon to listen
             </span>
           </div>
 
         {/* Video Reels Horizontal Scroller */}
         <div className="marquee-container overflow-hidden">
           <div className="animate-marquee-left flex gap-4 sm:gap-6 py-3 px-2">
-            {videosDuplicated.map((vid, vIdx) => (
-              <div
-                key={`vid-${vid.id}-${vIdx}`}
-                onClick={() => {
-                  setActiveVideoModal(vid);
-                  setIsPlaying(true);
-                  setIsMuted(false);
-                }}
-                className="group relative w-44 h-72 sm:w-56 sm:h-96 rounded-3xl overflow-hidden cursor-pointer shadow-lg hover:shadow-2xl border border-gray-200 transition-all duration-300 shrink-0 bg-neutral-900"
-              >
-                {/* Video Thumbnail */}
-                <img
-                  src={vid.thumbnail}
-                  alt={vid.customer_name}
-                  className="w-full h-full object-cover group-hover:scale-105 transition duration-700 brightness-[0.85]"
-                  loading="lazy"
-                />
+            {videosDuplicated.map((vid, vIdx) => {
+              const isCardUnmuted = unmutedCardId === `${vid.id}-${vIdx}`;
+              return (
+                <div
+                  key={`vid-${vid.id}-${vIdx}`}
+                  onClick={() => {
+                    setActiveVideoModal(vid);
+                    setIsPlaying(true);
+                    setIsMuted(false);
+                  }}
+                  className="group relative w-44 h-72 sm:w-56 sm:h-96 rounded-3xl overflow-hidden cursor-pointer shadow-lg hover:shadow-2xl border border-gray-200 transition-all duration-300 shrink-0 bg-neutral-900"
+                >
+                  {/* Direct Autoplay Video (Always muted by default) */}
+                  {vid.video_url ? (
+                    <video
+                      src={vid.video_url}
+                      poster={vid.thumbnail || vid.image_url}
+                      autoPlay
+                      loop
+                      muted={!isCardUnmuted}
+                      playsInline
+                      className="w-full h-full object-cover group-hover:scale-105 transition duration-700"
+                    />
+                  ) : (
+                    <img
+                      src={vid.thumbnail || vid.image_url}
+                      alt={vid.customer_name}
+                      className="w-full h-full object-cover group-hover:scale-105 transition duration-700 brightness-[0.85]"
+                      loading="lazy"
+                    />
+                  )}
 
-                {/* Video Overlay Elements */}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-black/40 flex flex-col justify-between p-4 text-white">
-                  
-                  {/* Top Bar: Live Badge & Views */}
-                  <div className="flex items-center justify-between">
-                    <span className="text-[10px] bg-black/60 backdrop-blur-md px-2.5 py-1 rounded-full font-bold flex items-center gap-1">
-                      <Play size={10} fill="currentColor" /> {vid.views}
-                    </span>
-                    <span className="text-[10px] bg-primary text-black font-extrabold px-2 py-0.5 rounded-full">
-                      Verified
-                    </span>
-                  </div>
-
-                  {/* Center Play Button Pulse */}
-                  <div className="self-center w-12 h-12 rounded-full bg-white/20 backdrop-blur-md border border-white/40 flex items-center justify-center group-hover:scale-110 group-hover:bg-primary group-hover:text-black transition duration-300 shadow-xl">
-                    <Play size={20} fill="currentColor" className="ml-1" />
-                  </div>
-
-                  {/* Bottom Caption & User */}
-                  <div className="space-y-1">
-                    <h5 className="font-extrabold text-sm text-white flex items-center gap-1">
-                      <span>{vid.customer_name}</span>
-                      <ShieldCheck size={14} className="text-primary" />
-                    </h5>
-                    <p className="text-[11px] text-gray-200 line-clamp-2 leading-snug">
-                      {vid.caption}
-                    </p>
-                    {vid.tagged_product && (
-                      <span className="inline-block text-[9px] bg-white/20 backdrop-blur-sm px-2 py-0.5 rounded-full text-gray-100 font-medium truncate max-w-full">
-                        🛍️ {vid.tagged_product}
+                  {/* Video Overlay Elements */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-transparent to-black/40 flex flex-col justify-between p-4 text-white pointer-events-none">
+                    
+                    {/* Top Bar: Views & Sound Unmute Button */}
+                    <div className="flex items-center justify-between pointer-events-auto">
+                      <span className="text-[10px] bg-black/60 backdrop-blur-md px-2.5 py-1 rounded-full font-bold flex items-center gap-1">
+                        <Play size={10} fill="currentColor" /> {vid.views}
                       </span>
-                    )}
-                  </div>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setUnmutedCardId(prev => (prev === `${vid.id}-${vIdx}` ? null : `${vid.id}-${vIdx}`));
+                        }}
+                        className={`p-2 rounded-full transition shadow-lg ${
+                          isCardUnmuted
+                            ? 'bg-primary text-black scale-110 font-bold'
+                            : 'bg-black/70 text-white hover:bg-black'
+                        }`}
+                        title={isCardUnmuted ? 'Mute sound' : 'Unmute to listen'}
+                      >
+                        {isCardUnmuted ? <Volume2 size={13} /> : <VolumeX size={13} />}
+                      </button>
+                    </div>
 
+                    {/* Bottom Caption & User */}
+                    <div className="space-y-1">
+                      <h5 className="font-extrabold text-sm text-white flex items-center gap-1">
+                        <span>{vid.customer_name}</span>
+                        <ShieldCheck size={14} className="text-primary" />
+                      </h5>
+                      <p className="text-[11px] text-gray-200 line-clamp-2 leading-snug">
+                        {vid.caption}
+                      </p>
+                      {vid.tagged_product && (
+                        <span className="inline-block text-[9px] bg-white/20 backdrop-blur-sm px-2 py-0.5 rounded-full text-gray-100 font-medium truncate max-w-full">
+                          🛍️ {vid.tagged_product}
+                        </span>
+                      )}
+                    </div>
+
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
 
