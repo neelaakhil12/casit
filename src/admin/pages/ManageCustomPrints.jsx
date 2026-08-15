@@ -315,17 +315,14 @@ export default function ManageCustomPrints() {
 
               {/* Overlay Badge */}
               <div className="absolute top-3 left-3 flex gap-1.5 items-center">
-                <span className="bg-primary text-black font-black text-[10px] px-2.5 py-1 rounded-full uppercase tracking-wider shadow">
-                  {item.badge || 'Featured'}
-                </span>
+                {item.badge && (
+                  <span className="bg-black text-white font-extrabold text-[10px] px-2.5 py-1 rounded-full shadow-md">
+                    {item.badge}
+                  </span>
+                )}
                 {item.extraTag && (
                   <span className="bg-black/80 text-white font-black text-[10px] px-2 py-0.5 rounded-full shadow">
                     {item.extraTag}
-                  </span>
-                )}
-                {item.allowFraming && (
-                  <span className="bg-emerald-600 text-white font-black text-[9px] px-2 py-0.5 rounded-full shadow flex items-center gap-1">
-                    <Shield size={10} /> +Frame ₹{item.framePrice || 250}
                   </span>
                 )}
               </div>
@@ -379,20 +376,9 @@ export default function ManageCustomPrints() {
                 <div className="flex flex-wrap gap-1.5 pt-1">
                   {item.defaultSizes?.map((sz, i) => (
                     <span key={i} className="text-[10px] font-bold bg-gray-100 text-gray-700 px-2 py-0.5 rounded-lg">
-                      {sz.label}: Poster ₹{sz.basePrice}{item.allowFraming ? ` | Frame ₹${sz.framePrice ?? item.framePrice ?? 250}` : ''}
+                      {sz.label}: ₹{sz.basePrice}
                     </span>
                   ))}
-                </div>
-
-                {/* Framing status pill */}
-                <div className="pt-1 text-[11px]">
-                  {item.allowFraming ? (
-                    <span className="text-emerald-700 font-extrabold flex items-center gap-1">
-                      ✓ Framing Available (+₹{item.framePrice || 250}) · {item.frameStyles?.length || 0} Styles
-                    </span>
-                  ) : (
-                    <span className="text-gray-400 font-semibold">Unframed print only</span>
-                  )}
                 </div>
               </div>
 
@@ -466,8 +452,7 @@ export default function ManageCustomPrints() {
                 <div className="flex bg-gray-100 rounded-2xl p-1 gap-1">
                   {[
                     { id: 'basic', label: '1. Basic Info' },
-                    { id: 'sizes', label: '2. Sizes & Base Prices' },
-                    { id: 'framing', label: '3. Framing Options 🖼️' }
+                    { id: 'sizes', label: '2. Sizes & Base Prices' }
                   ].map(tab => (
                     <button
                       key={tab.id}
@@ -498,19 +483,23 @@ export default function ManageCustomPrints() {
                         ) : (
                           <div className="w-24 h-28 rounded-2xl border-2 border-dashed border-gray-300 flex flex-col items-center justify-center text-gray-400 shrink-0 bg-white">
                             <ImageIcon size={22} />
-                            <span className="text-[9px] mt-1">Cover</span>
+                            <span className="text-[10px] mt-1">No image</span>
                           </div>
                         )}
-                        <div className="flex-1 space-y-2">
-                          <input
-                            type="file"
-                            accept="image/*"
-                            onChange={handleImageFileChange}
-                            className="text-xs file:mr-3 file:py-2 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-black file:text-white hover:file:bg-neutral-800 cursor-pointer"
-                          />
+                        <div className="space-y-2 flex-1">
+                          <label className="flex items-center gap-2 cursor-pointer bg-white border border-gray-300 hover:border-black px-4 py-2 rounded-xl text-xs font-bold text-gray-700 transition w-fit shadow-sm">
+                            <Upload size={13} />
+                            <span>Upload Cover Photo</span>
+                            <input
+                              type="file"
+                              accept="image/*"
+                              className="hidden"
+                              onChange={handleImageFileChange}
+                            />
+                          </label>
                           <input
                             type="text"
-                            placeholder="Or paste image URL (e.g. /custom-prints/custom-poster.jpg)..."
+                            placeholder="Or paste image URL (e.g. /custom-prints/...)"
                             value={form.image || ''}
                             onChange={e => setField('image', e.target.value)}
                             className="w-full text-xs p-2.5 bg-white border border-gray-200 rounded-xl outline-none focus:ring-1 focus:ring-black"
@@ -631,7 +620,7 @@ export default function ManageCustomPrints() {
                     <div className="flex items-center justify-between">
                       <div>
                         <h4 className="text-xs font-extrabold text-gray-800">Size Options & Base Prices ({form.defaultSizes.length})</h4>
-                        <p className="text-[10px] text-gray-500">Each size has its own poster price, frame price, and image upload count.</p>
+                        <p className="text-[10px] text-gray-500">Each size has its own poster price and image upload count.</p>
                       </div>
                       <button
                         type="button"
@@ -649,8 +638,6 @@ export default function ManageCustomPrints() {
                     <div className="space-y-3">
                       {form.defaultSizes.map((size, i) => {
                         const posterP = Number(size.basePrice) || 0;
-                        const frameP = Number(size.framePrice ?? form.framePrice ?? 0);
-                        const bothP = posterP + frameP;
                         const imgCount = Number(size.imageCount ?? form.imageCount ?? 1);
                         return (
                           <div key={i} className="p-4 bg-gray-50 border border-gray-200 rounded-2xl space-y-3">
@@ -664,7 +651,7 @@ export default function ManageCustomPrints() {
                                 <Trash2 size={13} />
                               </button>
                             </div>
-                            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                               <div>
                                 <label className="text-[10px] font-bold text-gray-500 block mb-1">Code (internal)</label>
                                 <input
@@ -686,17 +673,7 @@ export default function ManageCustomPrints() {
                                 />
                               </div>
                               <div>
-                                <label className="text-[10px] font-bold text-gray-500 block mb-1">Dimensions</label>
-                                <input
-                                  type="text"
-                                  value={size.dimensions}
-                                  onChange={e => updateSize(i, 'dimensions', e.target.value)}
-                                  className="w-full text-xs p-2 bg-white border border-gray-200 rounded-lg outline-none focus:ring-1 focus:ring-black"
-                                  placeholder="8.3 x 11.7 in"
-                                />
-                              </div>
-                              <div>
-                                <label className="text-[10px] font-bold text-blue-700 block mb-1">🖼️ Poster Price (₹)</label>
+                                <label className="text-[10px] font-bold text-blue-700 block mb-1">Poster Price (₹)</label>
                                 <input
                                   type="number"
                                   value={size.basePrice || ''}
@@ -704,17 +681,6 @@ export default function ManageCustomPrints() {
                                   className="w-full text-xs p-2 bg-blue-50 border border-blue-300 rounded-lg outline-none focus:ring-1 focus:ring-blue-500 font-black text-blue-950"
                                   min={0}
                                   placeholder="129"
-                                />
-                              </div>
-                              <div>
-                                <label className="text-[10px] font-bold text-amber-700 block mb-1">🔲 Frame Price (₹)</label>
-                                <input
-                                  type="number"
-                                  value={size.framePrice !== undefined ? size.framePrice : (form.framePrice || '')}
-                                  onChange={e => updateSize(i, 'framePrice', e.target.value)}
-                                  className="w-full text-xs p-2 bg-amber-50 border border-amber-300 rounded-lg outline-none focus:ring-1 focus:ring-amber-500 font-black text-amber-950"
-                                  min={0}
-                                  placeholder="250"
                                 />
                               </div>
                               <div>
@@ -730,196 +696,10 @@ export default function ManageCustomPrints() {
                                 />
                               </div>
                             </div>
-
-                            {/* Live Pricing Breakdown Bar */}
-                            <div className="p-2 bg-white rounded-xl border border-gray-200 flex flex-wrap items-center justify-between text-[11px] gap-2">
-                              <span className="font-bold text-blue-800">
-                                🖼️ Poster Only: <strong className="font-black">₹{posterP}</strong>
-                              </span>
-                              <span className="font-bold text-amber-800">
-                                🔲 Frame Only: <strong className="font-black">₹{frameP}</strong>
-                              </span>
-                              <span className="font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-lg border border-emerald-200">
-                                ✨ Poster + Frame: <strong className="font-black">₹{bothP}</strong>
-                              </span>
-                              <span className="font-bold text-gray-500 bg-gray-100 px-2 py-0.5 rounded-lg">
-                                📷 {imgCount} Image Button{imgCount > 1 ? 's' : ''}
-                              </span>
-                            </div>
                           </div>
                         );
                       })}
                     </div>
-                  </div>
-                )}
-
-                {/* ── TAB 3: FRAMING OPTIONS ── */}
-                {expandedSection === 'framing' && (
-                  <div className="space-y-5 animate-fade-in">
-                    <div>
-                      <h4 className="text-xs font-extrabold text-gray-800">Framing Configuration</h4>
-                      <p className="text-[10px] text-gray-500">Configure whether framing is offered for this custom print type and set frame pricing & styles.</p>
-                    </div>
-
-                    {/* Enable / Disable Framing Toggle */}
-                    <div className="p-4 bg-gray-50 rounded-2xl border border-gray-200 flex items-center justify-between">
-                      <div>
-                        <span className="text-xs font-extrabold text-gray-900 block">Offer Framing Option</span>
-                        <span className="text-[11px] text-gray-500">
-                          {form.allowFraming
-                            ? 'Customers will see the framing checkbox and style selector on the storefront'
-                            : 'Framing is disabled for this print type (unframed only)'}
-                        </span>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => setField('allowFraming', !form.allowFraming)}
-                        className={`w-12 h-6 flex items-center rounded-full p-1 transition duration-300 cursor-pointer ${
-                          form.allowFraming ? 'bg-emerald-600 justify-end' : 'bg-gray-300 justify-start'
-                        }`}
-                      >
-                        <div className="bg-white w-4 h-4 rounded-full shadow-md transform transition" />
-                      </button>
-                    </div>
-
-                    {form.allowFraming && (
-                      <div className="space-y-4 p-4 bg-emerald-50/50 rounded-2xl border border-emerald-200">
-                        {/* Frame Pricing & Badge */}
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                          <div>
-                            <label className="text-xs font-bold text-gray-700 block mb-1">
-                              Frame Add-on Price (₹ / item)
-                            </label>
-                            <div className="relative">
-                              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-gray-500">₹</span>
-                              <input
-                                type="number"
-                                min={0}
-                                value={form.framePrice || ''}
-                                onChange={e => setField('framePrice', Number(e.target.value))}
-                                className="w-full text-xs pl-7 pr-3 py-2.5 bg-white border border-gray-300 rounded-xl outline-none focus:ring-2 focus:ring-black font-black text-gray-900"
-                                placeholder="250"
-                              />
-                            </div>
-                            <span className="text-[10px] text-gray-500 mt-1 block">Added to base price when customer selects framing</span>
-                          </div>
-
-                          <div>
-                            <label className="text-xs font-bold text-gray-700 block mb-1">
-                              Frame Badge / Tag
-                            </label>
-                            <input
-                              type="text"
-                              value={form.frameBadge || ''}
-                              onChange={e => setField('frameBadge', e.target.value)}
-                              className="w-full text-xs p-2.5 bg-white border border-gray-300 rounded-xl outline-none focus:ring-2 focus:ring-black"
-                              placeholder="e.g. Acrylic Shield, 3 Frames Set"
-                            />
-                            <span className="text-[10px] text-gray-500 mt-1 block">Shown as a highlight badge next to framing checkbox</span>
-                          </div>
-                        </div>
-
-                        {/* Supported Frame Styles */}
-                        <div className="space-y-2 pt-2 border-t border-emerald-200/60">
-                          <label className="text-xs font-extrabold text-gray-800 block">
-                            Supported Frame Styles & Finishes
-                          </label>
-                          <p className="text-[10px] text-gray-500">Select which frame styles customers can choose from:</p>
-
-                          <div className="flex flex-wrap gap-2 pt-1">
-                            {DEFAULT_FRAME_STYLES.map(styleName => {
-                              const isChecked = (form.frameStyles || []).includes(styleName);
-                              return (
-                                <button
-                                  key={styleName}
-                                  type="button"
-                                  onClick={() => toggleFrameStyle(styleName)}
-                                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition border flex items-center gap-1.5 ${
-                                    isChecked
-                                      ? 'bg-black text-white border-black shadow-sm'
-                                      : 'bg-white text-gray-600 border-gray-300 hover:border-black'
-                                  }`}
-                                >
-                                  {isChecked && <Check size={12} className="text-primary" />}
-                                  <span>{styleName}</span>
-                                </button>
-                              );
-                            })}
-
-                            {/* Additional custom styles */}
-                            {(form.frameStyles || []).filter(s => !DEFAULT_FRAME_STYLES.includes(s)).map(customStyle => (
-                              <span
-                                key={customStyle}
-                                className="px-3 py-1.5 rounded-xl text-xs font-bold bg-black text-white border border-black shadow-sm flex items-center gap-1.5"
-                              >
-                                <Check size={12} className="text-primary" />
-                                <span>{customStyle}</span>
-                                <button
-                                  type="button"
-                                  onClick={() => removeFrameStyle(customStyle)}
-                                  className="ml-1 text-gray-400 hover:text-white"
-                                >
-                                  <X size={12} />
-                                </button>
-                              </span>
-                            ))}
-                          </div>
-
-                          {/* Add Custom Style Input */}
-                          <div className="flex gap-2 pt-2">
-                            <input
-                              type="text"
-                              value={newFrameStyleInput}
-                              onChange={e => setNewFrameStyleInput(e.target.value)}
-                              onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addCustomFrameStyle(); } }}
-                              placeholder="Add another frame style (e.g. Gold Vintage Frame)..."
-                              className="flex-1 text-xs p-2.5 bg-white border border-gray-300 rounded-xl outline-none focus:ring-1 focus:ring-black"
-                            />
-                            <button
-                              type="button"
-                              onClick={addCustomFrameStyle}
-                              className="px-4 py-2 bg-gray-900 text-white rounded-xl text-xs font-bold hover:bg-black transition"
-                            >
-                              Add Style
-                            </button>
-                          </div>
-                        </div>
-
-                        {/* Customer View Live Preview */}
-                        <div className="pt-3 border-t border-emerald-200/60 space-y-2">
-                          <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">
-                            Storefront Customer Preview:
-                          </span>
-                          <div className="p-3 bg-white rounded-2xl border border-gray-200 shadow-sm space-y-2.5">
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-2.5">
-                                <input type="checkbox" checked={true} readOnly className="w-4 h-4 rounded accent-black" />
-                                <span className="text-xs font-extrabold text-gray-900">
-                                  Add Frame (+₹{form.framePrice || 250} / item)
-                                </span>
-                              </div>
-                              {form.frameBadge && (
-                                <span className="text-[10px] bg-primary/20 text-yellow-900 font-extrabold px-2.5 py-0.5 rounded-full">
-                                  {form.frameBadge}
-                                </span>
-                              )}
-                            </div>
-                            <div className="flex flex-wrap gap-1.5 pt-1">
-                              {(form.frameStyles && form.frameStyles.length > 0 ? form.frameStyles : DEFAULT_FRAME_STYLES).map((s, idx) => (
-                                <span
-                                  key={idx}
-                                  className={`text-[10px] font-bold px-2.5 py-1 rounded-lg border ${
-                                    idx === 0 ? 'bg-black text-white border-black' : 'bg-gray-50 text-gray-700 border-gray-200'
-                                  }`}
-                                >
-                                  {s} {idx === 0 && '✓'}
-                                </span>
-                              ))}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    )}
                   </div>
                 )}
               </div>
@@ -930,27 +710,19 @@ export default function ManageCustomPrints() {
                   {expandedSection !== 'basic' && (
                     <button
                       type="button"
-                      onClick={() => {
-                        const order = ['basic', 'sizes', 'framing'];
-                        const idx = order.indexOf(expandedSection);
-                        setExpandedSection(order[Math.max(0, idx - 1)]);
-                      }}
+                      onClick={() => setExpandedSection('basic')}
                       className="px-5 py-2.5 rounded-xl border border-gray-200 text-xs font-bold text-gray-700 hover:bg-gray-100 transition"
                     >
                       ← Back
                     </button>
                   )}
-                  {expandedSection !== 'framing' && (
+                  {expandedSection === 'basic' && (
                     <button
                       type="button"
-                      onClick={() => {
-                        const order = ['basic', 'sizes', 'framing'];
-                        const idx = order.indexOf(expandedSection);
-                        setExpandedSection(order[Math.min(order.length - 1, idx + 1)]);
-                      }}
+                      onClick={() => setExpandedSection('sizes')}
                       className="px-5 py-2.5 rounded-xl bg-gray-900 text-white text-xs font-bold hover:bg-black transition"
                     >
-                      Next →
+                      Next: Sizes & Pricing →
                     </button>
                   )}
                 </div>
