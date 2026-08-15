@@ -4,6 +4,8 @@ import AdminLayout from './components/AdminLayout';
 import Dashboard from './pages/Dashboard';
 import ManageCategories from './pages/ManageCategories';
 import ManageProducts from './pages/ManageProducts';
+import ManageReviews from './pages/ManageReviews';
+import ManageCustomPrints from './pages/ManageCustomPrints';
 import AdminLogin from './pages/AdminLogin';
 import AdminResetPassword from './pages/AdminResetPassword';
 
@@ -34,6 +36,9 @@ export default function AdminApp() {
             <Route index element={<Dashboard />} />
             <Route path="categories" element={<ManageCategories />} />
             <Route path="products" element={<ManageProducts />} />
+            <Route path="custom-prints" element={<ManageCustomPrints />} />
+            <Route path="reels" element={<ManageReviews initialTab="videos" key="videos" />} />
+            <Route path="reviews" element={<ManageReviews initialTab="photos" key="photos" />} />
             <Route path="*" element={<Navigate to="/admin" replace />} />
           </Route>
         ) : (

@@ -16,6 +16,8 @@ import AdminApp from './admin/AdminApp';
 
 import Profile from './pages/Profile';
 import ProfileSetupModal from './components/ProfileSetupModal';
+import CustomizePoster from './pages/CustomizePoster';
+import VerifiedReviews from './components/VerifiedReviews';
 
 function MainApp() {
   const { activePage } = useContext(AppContext);
@@ -45,6 +47,10 @@ function MainApp() {
         return <Categories />;
       case 'product-details':
         return <ProductDetails />;
+      case 'customize':
+      case 'custom-poster':
+      case 'customized-posters':
+        return <CustomizePoster />;
       case 'cart':
         return <Cart />;
       case 'wishlist':
@@ -69,6 +75,9 @@ function MainApp() {
       <main className="flex-grow">
         {renderPage()}
       </main>
+
+      {/* Verified Customer Photo Reviews (2-Row Horizontal Scrolling Marquee) */}
+      <VerifiedReviews />
 
       {/* Footer */}
       <Footer />

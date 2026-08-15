@@ -1,6 +1,6 @@
 import React from 'react';
 import { Outlet, NavLink } from 'react-router-dom';
-import { LayoutDashboard, Layers, Package, LogOut } from 'lucide-react';
+import { LayoutDashboard, Layers, Package, Star, LogOut, Sparkles } from 'lucide-react';
 import logo from '../../assets/logo.png';
 
 export default function AdminLayout({ onLogout }) {
@@ -45,6 +45,49 @@ export default function AdminLayout({ onLogout }) {
           >
             <Package size={20} />
             <span className="font-medium">Products</span>
+          </NavLink>
+          <NavLink
+            to="/admin/custom-prints"
+            className={({ isActive }) =>
+              `flex items-center justify-between px-4 py-3 rounded-lg transition-colors ${
+                isActive ? 'bg-primary-light text-black font-bold border-r-4 border-primary' : 'text-gray-600 hover:bg-gray-50'
+              }`
+            }
+          >
+            <div className="flex items-center gap-3">
+              <Sparkles size={20} className="text-primary" />
+              <span className="font-medium">Custom Prints</span>
+            </div>
+            <span className="text-[10px] bg-primary text-black font-extrabold px-1.5 py-0.5 rounded-full">
+              STUDIO
+            </span>
+          </NavLink>
+          <NavLink
+            to="/admin/reels"
+            className={({ isActive }) =>
+              `flex items-center justify-between px-4 py-3 rounded-lg transition-colors ${
+                isActive ? 'bg-primary-light text-black font-bold border-r-4 border-primary' : 'text-gray-600 hover:bg-gray-50'
+              }`
+            }
+          >
+            <div className="flex items-center gap-3">
+              <Star size={20} className="text-amber-500 fill-amber-500/20" />
+              <span className="font-medium">Customer Reels</span>
+            </div>
+            <span className="text-[10px] bg-red-500 text-white font-extrabold px-1.5 py-0.5 rounded-full">
+              VIDEO
+            </span>
+          </NavLink>
+          <NavLink
+            to="/admin/reviews"
+            className={({ isActive }) =>
+              `flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
+                isActive ? 'bg-primary-light text-black font-bold border-r-4 border-primary' : 'text-gray-600 hover:bg-gray-50'
+              }`
+            }
+          >
+            <Star size={20} />
+            <span className="font-medium">Photo Reviews</span>
           </NavLink>
         </nav>
         <div className="p-4 border-t border-gray-200">

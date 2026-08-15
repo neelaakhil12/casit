@@ -144,30 +144,75 @@ export default function Dashboard() {
       {loading ? (
         <p className="text-gray-500">Loading metrics...</p>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-            <h3 className="text-sm font-medium text-gray-500 mb-1">Total Products</h3>
-            <p className="text-3xl font-bold text-gray-900">{metrics.totalProducts}</p>
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+              <h3 className="text-sm font-medium text-gray-500 mb-1">Total Products</h3>
+              <p className="text-3xl font-bold text-gray-900">{metrics.totalProducts}</p>
+            </div>
+            <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+              <h3 className="text-sm font-medium text-gray-500 mb-1">Total Categories</h3>
+              <p className="text-3xl font-bold text-gray-900">{metrics.totalCategories}</p>
+            </div>
+            <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+              <h3 className="text-sm font-medium text-gray-500 mb-1">Pending Orders</h3>
+              <p className="text-3xl font-bold text-blue-600">{metrics.pendingOrders}</p>
+            </div>
+            <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+              <h3 className="text-sm font-medium text-gray-500 mb-1">Completed Orders</h3>
+              <p className="text-3xl font-bold text-green-600">{metrics.completedOrders}</p>
+            </div>
+            <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+              <h3 className="text-sm font-medium text-gray-500 mb-1">Daily Revenue</h3>
+              <p className="text-3xl font-bold text-gray-900">₹{metrics.dailyRevenue.toLocaleString()}</p>
+            </div>
+            <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+              <h3 className="text-sm font-medium text-gray-500 mb-1">Monthly Revenue</h3>
+              <p className="text-3xl font-bold text-gray-900">₹{metrics.monthlyRevenue.toLocaleString()}</p>
+            </div>
           </div>
-          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-            <h3 className="text-sm font-medium text-gray-500 mb-1">Total Categories</h3>
-            <p className="text-3xl font-bold text-gray-900">{metrics.totalCategories}</p>
-          </div>
-          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-            <h3 className="text-sm font-medium text-gray-500 mb-1">Pending Orders</h3>
-            <p className="text-3xl font-bold text-blue-600">{metrics.pendingOrders}</p>
-          </div>
-          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-            <h3 className="text-sm font-medium text-gray-500 mb-1">Completed Orders</h3>
-            <p className="text-3xl font-bold text-green-600">{metrics.completedOrders}</p>
-          </div>
-          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-            <h3 className="text-sm font-medium text-gray-500 mb-1">Daily Revenue</h3>
-            <p className="text-3xl font-bold text-gray-900">₹{metrics.dailyRevenue.toLocaleString()}</p>
-          </div>
-          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-            <h3 className="text-sm font-medium text-gray-500 mb-1">Monthly Revenue</h3>
-            <p className="text-3xl font-bold text-gray-900">₹{metrics.monthlyRevenue.toLocaleString()}</p>
+
+          {/* Quick Management Shortcuts */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="bg-gradient-to-r from-neutral-900 to-neutral-800 text-white p-6 rounded-2xl flex flex-col justify-between">
+              <div>
+                <span className="text-[10px] bg-red-500 text-white font-extrabold px-2 py-0.5 rounded-full uppercase">
+                  Featured
+                </span>
+                <h4 className="text-lg font-black mt-2">Customer Video Reels</h4>
+                <p className="text-xs text-gray-300 mt-1">
+                  Upload customer unboxing videos, MP4 reels, views count, and tag products scrolling above the footer.
+                </p>
+              </div>
+              <div className="mt-4">
+                <a 
+                  href="/admin/reels"
+                  className="inline-flex items-center gap-2 bg-primary text-black font-extrabold text-xs px-4 py-2.5 rounded-xl hover:bg-yellow-400 transition"
+                >
+                  Manage Customer Reels &rarr;
+                </a>
+              </div>
+            </div>
+
+            <div className="bg-white p-6 rounded-2xl border border-gray-200 flex flex-col justify-between">
+              <div>
+                <span className="text-[10px] bg-amber-100 text-amber-800 font-extrabold px-2 py-0.5 rounded-full uppercase">
+                  Reviews
+                </span>
+                <h4 className="text-lg font-black text-gray-900 mt-2">Photo Wall Reviews</h4>
+                <p className="text-xs text-gray-500 mt-1">
+                  Add verified wall setup images, customer city names, star ratings, and testimonial captions.
+                </p>
+              </div>
+              <div className="mt-4">
+                <a 
+                  href="/admin/reviews"
+                  className="inline-flex items-center gap-2 bg-black text-white font-extrabold text-xs px-4 py-2.5 rounded-xl hover:bg-neutral-800 transition"
+                >
+                  Manage Photo Reviews &rarr;
+                </a>
+              </div>
+            </div>
           </div>
         </div>
       )}

@@ -31,7 +31,11 @@ export default function Categories() {
              product.description.toLowerCase().includes(searchQuery.toLowerCase());
     }
     
-    const matchesCategory = product.category === selectedCategoryFilter;
+    const catFilterNorm = selectedCategoryFilter.toLowerCase().replace(/[^a-z0-9]/g, '');
+    const prodCatNorm = (product.category || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+    const matchesCategory = product.category === selectedCategoryFilter || 
+      (catFilterNorm.includes('split') && prodCatNorm.includes('split')) ||
+      catFilterNorm === prodCatNorm;
     const matchesSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
                           product.description.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesCategory && matchesSearch;
@@ -165,26 +169,24 @@ export default function Categories() {
       {/* Main Grid Section */}
       <div data-aos="fade-up">
         {selectedCategoryFilter === 'customized-posters' ? (
-          <div className="bg-primary/10 border-2 border-dashed border-primary rounded-3xl p-10 sm:p-20 text-center space-y-6">
-             <div className="w-20 h-20 bg-primary/20 rounded-full flex items-center justify-center text-primary mx-auto">
-               <Upload size={40} />
+          <div className="bg-gradient-to-br from-yellow-50 via-white to-amber-50 border-2 border-dashed border-primary rounded-3xl p-8 sm:p-16 text-center space-y-6 shadow-sm">
+             <div className="w-20 h-20 bg-primary/20 rounded-full flex items-center justify-center text-primary-hover mx-auto shadow-yellow-glow">
+               <Upload size={36} />
              </div>
-             <h3 className="text-2xl sm:text-3xl font-black text-gray-900">Create Your Custom Poster</h3>
-             <p className="text-sm text-gray-600 max-w-md mx-auto">
-               Upload your favorite photo, design, or artwork, and we will print and frame it in stunning high definition.
-             </p>
+             <div className="space-y-2 max-w-lg mx-auto">
+               <span className="text-[10px] font-black uppercase tracking-widest text-primary-hover bg-primary/20 px-3 py-1 rounded-full">Interactive Studio</span>
+               <h3 className="text-2xl sm:text-4xl font-black text-gray-900">Personalized Custom Poster Studio</h3>
+               <p className="text-sm text-gray-600 leading-relaxed">
+                 Upload your own photos, select frame options, live preview on real walls, crop, apply aesthetic filters, and order in 300+ GSM archival matte quality.
+               </p>
+             </div>
              
              <button 
-               onClick={() => {
-                 const customProd = products.find(p => p.category === 'customized-posters');
-                 if (customProd) {
-                   viewProductDetails(customProd.id);
-                 }
-               }}
-               className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-black text-white font-bold rounded-2xl hover:bg-neutral-800 transition shadow-xl"
+               onClick={() => navigateTo('customize')}
+               className="btn-primary !py-4 !px-10 text-sm inline-flex items-center gap-2 shadow-yellow-glow"
              >
-               <Upload size={20} />
-               <span>Start Customizing</span>
+               <Upload size={18} />
+               <span>Launch Custom Studio</span>
              </button>
           </div>
         ) : sortedProducts.length > 0 ? (

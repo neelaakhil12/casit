@@ -43,10 +43,11 @@ export default function Navbar() {
           </div>
 
           {/* Desktop Navigation Links */}
-          <nav className="hidden md:flex space-x-8 text-sm font-semibold tracking-wide">
+          <nav className="hidden md:flex space-x-7 text-sm font-semibold tracking-wide items-center">
             {[
               { id: 'home', label: 'Home' },
               { id: 'categories', label: 'Categories' },
+              { id: 'customize', label: 'Custom Poster', badge: 'Studio' },
               { id: 'services', label: 'Our Services' },
               { id: 'about', label: 'About Us' },
               { id: 'wishlist', label: 'Wishlist' },
@@ -55,11 +56,16 @@ export default function Navbar() {
               <button
                 key={link.id}
                 onClick={() => handleNavClick(link.id)}
-                className={`relative py-2 text-black transition-colors duration-300 hover:text-primary-hover ${
+                className={`relative py-2 text-black transition-colors duration-300 hover:text-primary-hover flex items-center gap-1.5 ${
                   activePage === link.id ? 'font-bold' : ''
                 }`}
               >
                 {link.label}
+                {link.badge && (
+                  <span className="bg-primary text-black font-black text-[9px] px-1.5 py-0.5 rounded-full uppercase tracking-wider animate-pulse shadow-sm">
+                    {link.badge}
+                  </span>
+                )}
                 {activePage === link.id && (
                   <span className="absolute bottom-0 left-0 w-full h-1 bg-primary rounded-full animate-fade-in-up"></span>
                 )}
@@ -199,10 +205,11 @@ export default function Navbar() {
           </form>
 
           {/* Navigation Links */}
-          <nav className="flex flex-col space-y-4">
+          <nav className="flex flex-col space-y-3">
             {[
               { id: 'home', label: 'Home' },
               { id: 'categories', label: 'Categories' },
+              { id: 'customize', label: '✨ Customize Poster Studio', highlight: true },
               { id: 'services', label: 'Our Services' },
               { id: 'about', label: 'About Us' },
               { id: 'wishlist', label: 'Wishlist' },
@@ -211,11 +218,12 @@ export default function Navbar() {
               <button
                 key={link.id}
                 onClick={() => handleNavClick(link.id)}
-                className={`text-left text-base font-semibold py-1.5 border-b border-gray-50 ${
-                  activePage === link.id ? 'text-primary font-bold border-primary' : 'text-gray-700'
+                className={`text-left text-base font-semibold py-2 border-b border-gray-50 flex items-center justify-between ${
+                  activePage === link.id ? 'text-primary font-bold border-primary' : link.highlight ? 'text-black font-extrabold bg-primary/10 px-3 rounded-xl' : 'text-gray-700'
                 }`}
               >
-                {link.label}
+                <span>{link.label}</span>
+                {link.highlight && <span className="text-[10px] bg-primary text-black font-bold px-2 py-0.5 rounded-full">New</span>}
               </button>
             ))}
           </nav>

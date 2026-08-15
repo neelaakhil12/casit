@@ -1,7 +1,7 @@
 import React, { useContext } from 'react';
 import { AppContext } from '../context/AppContext';
 import ProductCard from '../components/ProductCard';
-import { ShieldCheck, Truck, RotateCcw, Heart, ChevronRight, Award, UploadCloud } from 'lucide-react';
+import { ShieldCheck, Truck, RotateCcw, Heart, ChevronRight, Award, UploadCloud, Sparkles, Upload, Layers } from 'lucide-react';
 
 export default function Home() {
   const { products, categories, navigateTo, setSelectedCategoryFilter } = useContext(AppContext);
@@ -16,6 +16,7 @@ export default function Home() {
   const newArrivalsFiltered = products.filter(p => p.newArrival || p.is_new_arrival);
   const newArrivals = (newArrivalsFiltered.length > 0 ? newArrivalsFiltered : products).slice(0, 4);
   const framedPosters = products.filter(p => p.category === 'framed' || p.id === 12);
+  const wallSetups = products.filter(p => p.category === 'wall-setups');
 
   const handleCategoryClick = (categoryId) => {
     setSelectedCategoryFilter(categoryId);
@@ -135,6 +136,83 @@ export default function Home() {
           ))}
         </div>
       </section>
+
+      {/* 6. CUSTOM POSTER STUDIO INTERACTIVE BANNER */}
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8" data-aos="fade-up">
+        <div className="relative rounded-3xl bg-gradient-to-r from-neutral-950 via-neutral-900 to-black text-white p-8 sm:p-14 overflow-hidden border border-neutral-800 shadow-2xl flex flex-col lg:flex-row items-center justify-between gap-8">
+          <div className="space-y-4 max-w-xl text-center lg:text-left z-10">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/20 border border-primary/40 text-primary text-xs font-black uppercase tracking-wider">
+              <Sparkles size={14} />
+              <span>Personalized Wall Decor</span>
+            </div>
+            <h2 className="text-3xl sm:text-4xl font-black text-white leading-tight">
+              Design Your Own Custom Wall Poster
+            </h2>
+            <p className="text-sm text-gray-300 leading-relaxed">
+              Upload your favorite photos, digital artwork, or anime wallpaper. Choose real wooden fiber frames, live wall mockups, split triptych layouts, and 300+ GSM archival matte printing.
+            </p>
+            <div className="pt-2 flex flex-wrap justify-center lg:justify-start gap-4">
+              <button 
+                onClick={() => navigateTo('customize')}
+                className="btn-primary !py-3.5 !px-8 text-xs font-black flex items-center gap-2 shadow-yellow-glow"
+              >
+                <Upload size={16} />
+                <span>Launch Custom Studio</span>
+              </button>
+              <button 
+                onClick={() => { setSelectedCategoryFilter('split-posters'); navigateTo('categories'); }}
+                className="px-6 py-3.5 bg-neutral-800 hover:bg-neutral-700 text-white text-xs font-bold rounded-full transition"
+              >
+                Explore Split Posters
+              </button>
+            </div>
+          </div>
+
+          <div className="relative z-10 w-full max-w-md cursor-pointer group" onClick={() => navigateTo('customize')}>
+            <div className="relative rounded-2xl overflow-hidden shadow-2xl border-2 border-white/20 group-hover:scale-105 transition duration-500">
+              <img 
+                src="/categories/split-posters.png" 
+                alt="Custom Wall Mockup"
+                className="w-full h-auto object-cover"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent flex items-end p-5">
+                <span className="text-xs font-bold text-primary flex items-center gap-1.5">
+                  <Sparkles size={14} /> Try Live Wall Preview & Size Scaling →
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* 7. BEST WALL SETUP PACKS */}
+      {wallSetups.length > 0 && (
+        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex flex-col sm:flex-row items-center justify-between border-b border-gray-100 pb-3 sm:pb-5 mb-5 sm:mb-10 gap-3" data-aos="fade-up">
+            <div>
+              <div className="inline-flex items-center gap-1.5 text-primary-hover font-black text-xs uppercase tracking-wider mb-1">
+                <Layers size={14} />
+                <span>Instant Room Makeover</span>
+              </div>
+              <h2 className="text-2xl sm:text-3xl font-extrabold text-gray-900">Best Wall Setup Packs</h2>
+              <p className="text-xs text-gray-400 mt-1">Curated multi-poster collage bundles for gamers, creators, and aesthetic room setups.</p>
+            </div>
+            <button 
+              onClick={() => { setSelectedCategoryFilter('wall-setups'); navigateTo('categories'); }}
+              className="flex items-center gap-1.5 text-xs font-bold hover:text-primary-hover transition"
+            >
+              <span>View All Packs</span>
+              <ChevronRight size={16} />
+            </button>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-8">
+            {wallSetups.slice(0, 4).map((product) => (
+              <ProductCard key={product.id} product={product} />
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* 8. WHY CHOOSE CASIT */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">

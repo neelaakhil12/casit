@@ -5,6 +5,7 @@ import {
   Printer, 
   UploadCloud, 
   Frame, 
+  Layers,
   Image as ImageIcon, 
   Gift, 
   Truck, 
@@ -188,8 +189,8 @@ export default function Services() {
       title: "Customized Posters",
       desc: "Bring your private creations to life. Simply upload high-res images from your mobile or PC, select your size parameters, and leave the printing lab work to us.",
       features: ["Easy Upload Wizard", "Resolution Quality Check", "Personalized Gift Options"],
-      action: () => { setSelectedCategoryFilter('all'); navigateTo('categories'); },
-      actionLabel: "Explore All Posters"
+      action: () => navigateTo('customize'),
+      actionLabel: "Launch Custom Studio"
     },
     {
       icon: <Frame size={28} className="text-black" />,
@@ -198,6 +199,14 @@ export default function Services() {
       features: ["1-inch Sleek Fiber Frame", "Shatterproof Acrylic Cover", "Pre-installed Metal Hooks"],
       action: () => { setSelectedCategoryFilter('framed'); navigateTo('categories'); },
       actionLabel: "Browse Framed Posters"
+    },
+    {
+      icon: <Layers size={28} className="text-black" />,
+      title: "Split Posters & Multi-Panel Sets",
+      desc: "Transform large blank walls with multi-panel triptych wall displays. Continuous panoramic flow printed across multiple aligned panels.",
+      features: ["3-Piece & 5-Piece Sets", "Seamless Panoramic Flow", "Precision Panel Alignment"],
+      action: () => { setSelectedCategoryFilter('split-posters'); navigateTo('categories'); },
+      actionLabel: "Shop Split Posters"
     },
     {
       icon: <ImageIcon size={28} className="text-black" />,

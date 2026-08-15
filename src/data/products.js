@@ -6,6 +6,8 @@ export const categories = [
   { id: 'marvel-dc', name: 'Marvel & DC', description: 'Superhero posters from Marvel and DC universes.', image: '/categories/marvel-dc.png' },
   { id: 'spiritual', name: 'Spiritual', description: 'God, temples, meditation, and spiritual artwork.', image: '/categories/spiritual.png' },
   { id: 'sports', name: 'Sports', description: 'Football, Cricket, Formula 1, Basketball, and other sports posters.', image: '/categories/sports.png' },
+  { id: 'split-posters', name: 'Split Posters', description: 'Multi-panel split wall art sets creating stunning panoramic displays.', image: '/categories/split-posters.png' },
+  { id: 'wall-setups', name: 'Wall Setup Packs', description: 'Curated gallery wall collage combos & battlestation packs for instant room makeovers.', image: 'https://images.unsplash.com/photo-1513694203232-719a280e022f?q=80&w=600&auto=format&fit=crop' },
   { id: 'polaroids', name: 'Polaroids', description: 'Vintage polaroid-style photo prints.', image: '/categories/polaroids.png' },
   { id: 'framed', name: 'Framed Posters', description: 'Premium framed wall posters available in multiple sizes.', image: '/categories/framed.png' },
   { id: 'customized-posters', name: 'Customized Posters', description: 'Upload your own image and we will print and frame it for you.', image: 'https://images.unsplash.com/photo-1513519245088-0e12902e5a38?q=80&w=600&auto=format&fit=crop' }
@@ -265,6 +267,139 @@ export const products = [
     trending: true,
     bestSeller: true,
     newArrival: false
+  },
+  {
+    id: 14,
+    name: 'Neo-Tokyo Cyber Skyline (3-Piece Split Set)',
+    category: 'split-posters',
+    basePrice: 599,
+    rating: 4.9,
+    reviewsCount: 148,
+    image: '/categories/split-posters.png',
+    description: 'Immersive 3-panel split poster set showcasing a futuristic neon cyberpunk Tokyo city skyline. Designed to hang seamlessly across your living room or gaming setup.',
+    specs: {
+      paper: '300 GSM Heavyweight Matte Canvas',
+      printing: '12-Color Archival Giclée Print',
+      finish: 'Anti-Glare Matte Finish',
+      packaging: 'Reinforced 3-in-1 Rigid Postal Box'
+    },
+    trending: true,
+    bestSeller: true,
+    newArrival: true
+  },
+  {
+    id: 15,
+    name: 'Gargantua Black Hole Split Panorama (3 Panels)',
+    category: 'split-posters',
+    basePrice: 649,
+    rating: 5.0,
+    reviewsCount: 195,
+    image: 'https://images.unsplash.com/photo-1462331940025-496dfbfc7564?q=80&w=1000&auto=format&fit=crop',
+    description: 'Deep cosmic odyssey split artwork spanning three grand panels. Creates an astronomical statement piece on any wall.',
+    specs: {
+      paper: '350 GSM Premium Gallery Paper',
+      printing: 'Ultra-HD Pigment Print',
+      finish: 'Satin Smooth Lustre',
+      packaging: 'Waterproof protective sleeves in heavy-duty tube'
+    },
+    trending: true,
+    bestSeller: true,
+    newArrival: false
+  },
+  {
+    id: 16,
+    name: 'Majestic Alpine Ridge Sunset (3-Piece Split)',
+    category: 'split-posters',
+    basePrice: 599,
+    rating: 4.8,
+    reviewsCount: 104,
+    image: 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?q=80&w=1000&auto=format&fit=crop',
+    description: 'Breathtaking panoramic mountain peaks bathed in warm golden hour light, divided into 3 modern wall art panels.',
+    specs: {
+      paper: '300 GSM Fine Art Matte Paper',
+      printing: 'Eco-solvent High-density Ink',
+      finish: 'Velvet Matte Coating',
+      packaging: 'Cardboard Box with Foam Corners'
+    },
+    trending: false,
+    bestSeller: true,
+    newArrival: true
+  },
+  {
+    id: 17,
+    name: 'Ultimate Gamer Battlestation (23-Piece Combo Pack)',
+    category: 'wall-setups',
+    basePrice: 899,
+    rating: 5.0,
+    reviewsCount: 320,
+    image: 'https://images.unsplash.com/photo-1542751371-adc38448a05e?q=80&w=1000&auto=format&fit=crop',
+    description: 'Transform your gaming desk into an elite streamer studio. Includes a 3-piece A3 split centerpiece surrounded by 20 coordinating A5 gaming & anime posters.',
+    specs: {
+      paper: '300 GSM Heavyweight Matte Canvas',
+      printing: 'Ultra-HD Pigment Archival Print',
+      finish: 'Anti-Glare Smooth Matte',
+      packaging: 'Mega Setup Box with Reference Arrangement Guide'
+    },
+    trending: true,
+    bestSeller: true,
+    newArrival: true
+  },
+  {
+    id: 18,
+    name: 'Discipline & Greatness Motivation Wall (20-Piece Pack)',
+    category: 'wall-setups',
+    basePrice: 799,
+    rating: 4.9,
+    reviewsCount: 215,
+    image: 'https://images.unsplash.com/photo-1563245372-f21724e3856d?q=80&w=1000&auto=format&fit=crop',
+    description: 'Designed for home offices, study spaces, and workout rooms. Features a 3-piece centerpiece plus 17 high-energy motivational typography and athlete prints.',
+    specs: {
+      paper: '300 GSM Velvet Matte Sheet',
+      printing: '12-Color Giclée Process',
+      finish: 'Non-reflective Matte',
+      packaging: 'Reinforced Flat-pack Protection'
+    },
+    trending: true,
+    bestSeller: true,
+    newArrival: false
+  },
+  {
+    id: 19,
+    name: 'Cinema & Anime Blockbuster Fan Wall (18-Piece Pack)',
+    category: 'wall-setups',
+    basePrice: 749,
+    rating: 4.9,
+    reviewsCount: 180,
+    image: 'https://images.unsplash.com/photo-1462331940025-496dfbfc7564?q=80&w=1000&auto=format&fit=crop',
+    description: 'The ultimate movie and anime lover collection. Features 2 large 4-panel split artworks and 10 coordinating A4 cinematic posters.',
+    specs: {
+      paper: '300 GSM Premium Gallery Paper',
+      printing: '12-Color Archival Print',
+      finish: 'Anti-glare Satin Matte',
+      packaging: 'Collector Tube & Sleeve Box'
+    },
+    trending: true,
+    bestSeller: false,
+    newArrival: true
+  },
+  {
+    id: 20,
+    name: 'Aesthetic Neon Cyberpunk City Setup (15-Piece Pack)',
+    category: 'wall-setups',
+    basePrice: 699,
+    rating: 4.8,
+    reviewsCount: 140,
+    image: '/categories/split-posters.png',
+    description: 'A glowing synthwave and futuristic neon Tokyo collage set designed for vibrant ambient bedroom walls.',
+    specs: {
+      paper: '300 GSM Archival Card',
+      printing: 'Ultra-Vibrant Pigment',
+      finish: 'Smooth Matte',
+      packaging: 'Heavy-duty postal box'
+    },
+    trending: true,
+    bestSeller: true,
+    newArrival: true
   },
   {
     id: 'custom-1',

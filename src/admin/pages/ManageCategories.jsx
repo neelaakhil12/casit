@@ -71,9 +71,10 @@ export default function ManageCategories() {
 
         if (dbError) throw dbError;
       } else {
+        const catId = name.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-') || Date.now().toString();
         const { error: dbError } = await supabase
           .from('categories')
-          .insert([{ name, image_url: imageUrl }]);
+          .insert([{ id: catId, name, image_url: imageUrl }]);
 
         if (dbError) throw dbError;
       }
