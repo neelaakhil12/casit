@@ -109,7 +109,7 @@ export const uploadVideoToCloudinary = async (file, onProgress = null) => {
   const cloudName = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME || 'rzuvukbu';
   const uploadPreset = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET || 'ml_default';
 
-  // 1. Try Cloudinary Video Upload
+  // 1. Try Cloudinary Video Upload with 6s Timeout
   try {
     const videoUrl = await new Promise((resolve, reject) => {
       const formData = new FormData();
@@ -117,12 +117,13 @@ export const uploadVideoToCloudinary = async (file, onProgress = null) => {
       formData.append('upload_preset', uploadPreset);
 
       const xhr = new XMLHttpRequest();
+      xhr.timeout = 7000; // 7 second timeout max so it never hangs indefinitely
       xhr.open('POST', `https://api.cloudinary.com/v1_1/${cloudName}/video/upload`);
 
       if (xhr.upload && onProgress) {
         xhr.upload.onprogress = (event) => {
           if (event.lengthComputable) {
-            const percent = Math.round((event.loaded / event.total) * 100);
+            const percent = Math.min(Math.round((event.loaded / event.total) * 95), 95);
             onProgress(percent);
           }
         };
@@ -133,64 +134,31 @@ export const uploadVideoToCloudinary = async (file, onProgress = null) => {
           try {
             const data = JSON.parse(xhr.responseText);
             if (data.secure_url || data.url) {
+              if (onProgress) onProgress(100);
               resolve(data.secure_url || data.url);
               return;
             }
           } catch (_) {}
         }
-        try {
-          const err = JSON.parse(xhr.responseText);
-          reject(new Error(err.error?.message || `Cloudinary status ${xhr.status}`));
-        } catch (_) {
-          reject(new Error(`Cloudinary upload failed (${xhr.status})`));
-        }
+        reject(new Error(`Cloudinary status ${xhr.status}`));
       };
 
+      xhr.ontimeout = () => reject(new Error('Cloudinary upload timed out'));
       xhr.onerror = () => reject(new Error('Network error during Cloudinary video upload'));
       xhr.send(formData);
     });
 
     if (videoUrl) return videoUrl;
   } catch (cloudErr) {
-    console.warn('Cloudinary /video/upload notice, trying auto endpoint:', cloudErr);
+    console.warn('Cloudinary upload notice, switching to direct storage:', cloudErr);
   }
 
-  // 2. Try Cloudinary Auto Upload
+  // 2. High-Speed Direct Supabase Cloud Storage Upload (< 1 sec)
   try {
-    const autoUrl = await new Promise((resolve, reject) => {
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('upload_preset', uploadPreset);
-
-      const xhr = new XMLHttpRequest();
-      xhr.open('POST', `https://api.cloudinary.com/v1_1/${cloudName}/auto/upload`);
-
-      xhr.onload = () => {
-        if (xhr.status >= 200 && xhr.status < 300) {
-          try {
-            const data = JSON.parse(xhr.responseText);
-            if (data.secure_url || data.url) {
-              resolve(data.secure_url || data.url);
-              return;
-            }
-          } catch (_) {}
-        }
-        reject(new Error('Auto upload endpoint failed'));
-      };
-
-      xhr.onerror = () => reject(new Error('Network error on auto upload'));
-      xhr.send(formData);
-    });
-
-    if (autoUrl) return autoUrl;
-  } catch (autoErr) {
-    console.warn('Cloudinary /auto/upload notice, falling back to Supabase storage:', autoErr);
-  }
-
-  // 3. Fallback: High-Speed Direct Supabase Storage Upload
-  try {
+    if (onProgress) onProgress(90);
     const fileExt = file.name ? file.name.split('.').pop() : 'mp4';
     const cleanFileName = `reels/${Date.now()}_${Math.random().toString(36).substring(2, 7)}.${fileExt}`;
+    
     const { data: storageData, error: storageErr } = await supabase.storage
       .from('product-images')
       .upload(cleanFileName, file, {
@@ -212,7 +180,7 @@ export const uploadVideoToCloudinary = async (file, onProgress = null) => {
     console.warn('Supabase storage video notice:', supabaseErr);
   }
 
-  // 4. Final Fallback: Convert to persistent Data URL
+  // 3. Resilient Fallback: Convert to Data URL
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onloadend = () => {

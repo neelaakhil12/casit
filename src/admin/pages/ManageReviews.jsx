@@ -676,7 +676,7 @@ export default function ManageReviews({ initialTab = 'videos' }) {
                   <div className="flex items-center justify-between text-xs font-bold text-gray-800">
                     <span className="flex items-center gap-1.5">
                       <div className="w-3.5 h-3.5 border-2 border-amber-600 border-t-transparent rounded-full animate-spin"></div>
-                      <span>Uploading media to Cloudinary...</span>
+                      <span>{uploadProgress >= 95 ? 'Finalizing & Saving to Database...' : 'Uploading media to Cloudinary...'}</span>
                     </span>
                     <span className="text-amber-700 font-extrabold">{uploadProgress}%</span>
                   </div>
@@ -707,7 +707,7 @@ export default function ManageReviews({ initialTab = 'videos' }) {
                   {uploading ? (
                     <>
                       <div className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin"></div>
-                      <span>Uploading ({uploadProgress}%)...</span>
+                      <span>{uploadProgress >= 95 ? 'Saving...' : `Uploading (${uploadProgress}%)...`}</span>
                     </>
                   ) : (
                     <>
