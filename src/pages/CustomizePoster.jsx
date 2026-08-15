@@ -81,9 +81,8 @@ export default function CustomizePoster() {
   }
   const totalPrice = perUnitPrice * selectedQty;
 
-  // Image uploads count configured in admin (e.g. 1 for single, 3 for split-3, 4 for 2x2 grid, etc.)
-  const baseImageCount = currentSizeObj.imageCount ?? currentTypeObj.imageCount ?? (selectedType === 'split-3' ? 3 : selectedType === 'split-2x2' ? 4 : (selectedSize === '4Photo' ? 4 : (selectedType === 'photobooth' ? 3 : 1)));
-  const requiredImagesCount = baseImageCount * selectedQty;
+  // Image uploads count strictly configured in admin (e.g. 1 for single, 3 for split-3, 4 for 2x2 grid, etc.)
+  const requiredImagesCount = currentSizeObj.imageCount ?? currentTypeObj.imageCount ?? (selectedType === 'split-3' ? 3 : selectedType === 'split-2x2' ? 4 : (selectedSize === '4Photo' ? 4 : (selectedType === 'photobooth' ? 3 : 1)));
 
   // Handle upload for a specific slot index
   const handleSlotUpload = (slotIndex, e) => {
