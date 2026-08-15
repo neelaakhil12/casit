@@ -25,26 +25,35 @@ function ReelCardVideo({ src, isUnmuted }) {
 
   useEffect(() => {
     const video = videoRef.current;
-    if (!video) return;
+    if (!video || !src) return;
 
     video.muted = !isUnmuted;
     video.defaultMuted = true;
     video.playsInline = true;
-    video.setAttribute('playsinline', '');
-    video.setAttribute('webkit-playsinline', '');
+
+    try {
+      video.setAttribute('playsinline', '');
+      video.setAttribute('webkit-playsinline', '');
+    } catch (_) {}
 
     const startPlaying = () => {
-      const playPromise = video.play();
-      if (playPromise !== undefined) {
-        playPromise.catch(() => {
-          video.muted = true;
-          video.play().catch(() => {});
-        });
-      }
+      try {
+        const playPromise = video.play();
+        if (playPromise !== undefined && typeof playPromise.catch === 'function') {
+          playPromise.catch(() => {
+            if (video) {
+              video.muted = true;
+              video.play().catch(() => {});
+            }
+          });
+        }
+      } catch (_) {}
     };
 
     startPlaying();
   }, [src, isUnmuted]);
+
+  if (!src) return null;
 
   return (
     <video
@@ -54,7 +63,7 @@ function ReelCardVideo({ src, isUnmuted }) {
       loop
       muted={!isUnmuted}
       playsInline
-      preload="auto"
+      preload="metadata"
       className="w-full h-full object-cover group-hover:scale-105 transition duration-700 bg-neutral-900"
     />
   );
@@ -84,8 +93,8 @@ export default function VerifiedReviews() {
         .order('created_at', { ascending: false });
 
       if (!error && Array.isArray(data)) {
-        const dbPhotos = data.filter(item => !item.video_url);
-        const dbVideos = data.filter(item => !!item.video_url);
+        const dbPhotos = data.filter(item => item && !item.video_url && item.image_url);
+        const dbVideos = data.filter(item => item && item.video_url);
         setPhotoReviews(dbPhotos);
         setVideoReviews(dbVideos);
       } else {
@@ -93,7 +102,7 @@ export default function VerifiedReviews() {
         setVideoReviews([]);
       }
     } catch (err) {
-      console.log('Error loading verified reviews:', err);
+      console.warn('Error loading verified reviews:', err);
       setPhotoReviews([]);
       setVideoReviews([]);
     } finally {
@@ -101,8 +110,11 @@ export default function VerifiedReviews() {
     }
   };
 
-  const hasPhotos = isLoaded && photoReviews && photoReviews.length > 0;
-  const hasVideos = isLoaded && videoReviews && videoReviews.length > 0;
+  const safePhotos = Array.isArray(photoReviews) ? photoReviews : [];
+  const safeVideos = Array.isArray(videoReviews) ? videoReviews : [];
+
+  const hasPhotos = isLoaded && safePhotos.length > 0;
+  const hasVideos = isLoaded && safeVideos.length > 0;
 
   if (!isLoaded || (!hasPhotos && !hasVideos)) {
     return null;
@@ -112,30 +124,34 @@ export default function VerifiedReviews() {
   const [unmutedCardId, setUnmutedCardId] = useState(null);
 
   // Dual Row Photo reviews setup
-  const midIndex = Math.ceil(photoReviews.length / 2);
-  const row1 = photoReviews.slice(0, midIndex);
-  const row2 = photoReviews.slice(midIndex);
+  const midIndex = Math.ceil(safePhotos.length / 2);
+  const row1 = safePhotos.slice(0, midIndex);
+  const row2 = safePhotos.slice(midIndex);
 
   const row1Duplicated = row1.length > 0 ? [...row1, ...row1, ...row1] : [];
   const row2Duplicated = row2.length > 0 ? [...row2, ...row2, ...row2] : [];
-  const videosDuplicated = videoReviews.length > 0 ? [...videoReviews, ...videoReviews, ...videoReviews] : [];
+  const videosDuplicated = safeVideos.length > 0 ? [...safeVideos, ...safeVideos, ...safeVideos] : [];
 
   const handleTogglePlay = () => {
     if (modalVideoRef.current) {
-      if (isPlaying) {
-        modalVideoRef.current.pause();
-        setIsPlaying(false);
-      } else {
-        modalVideoRef.current.play();
-        setIsPlaying(true);
-      }
+      try {
+        if (isPlaying) {
+          modalVideoRef.current.pause();
+          setIsPlaying(false);
+        } else {
+          modalVideoRef.current.play().catch(() => {});
+          setIsPlaying(true);
+        }
+      } catch (_) {}
     }
   };
 
   const handleToggleMute = () => {
     if (modalVideoRef.current) {
-      modalVideoRef.current.muted = !isMuted;
-      setIsMuted(!isMuted);
+      try {
+        modalVideoRef.current.muted = !isMuted;
+        setIsMuted(!isMuted);
+      } catch (_) {}
     }
   };
 

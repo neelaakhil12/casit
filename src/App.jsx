@@ -19,6 +19,8 @@ import ProfileSetupModal from './components/ProfileSetupModal';
 import CustomizePoster from './pages/CustomizePoster';
 import VerifiedReviews from './components/VerifiedReviews';
 
+import ErrorBoundary from './components/ErrorBoundary';
+
 function MainApp() {
   const { activePage } = useContext(AppContext);
 
@@ -73,11 +75,15 @@ function MainApp() {
 
       {/* Main Content Area */}
       <main className="flex-grow">
-        {renderPage()}
+        <ErrorBoundary>
+          {renderPage()}
+        </ErrorBoundary>
       </main>
 
-      {/* Verified Customer Photo Reviews (2-Row Horizontal Scrolling Marquee) */}
-      <VerifiedReviews />
+      {/* Verified Customer Photo Reviews */}
+      <ErrorBoundary>
+        <VerifiedReviews />
+      </ErrorBoundary>
 
       {/* Footer */}
       <Footer />
