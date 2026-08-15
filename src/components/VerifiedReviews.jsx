@@ -207,30 +207,37 @@ export default function VerifiedReviews() {
         .select('*')
         .order('created_at', { ascending: false });
 
-      if (!error && data && data.length > 0) {
+      if (!error && Array.isArray(data)) {
         const dbPhotos = data.filter(item => !item.video_url);
         const dbVideos = data.filter(item => !!item.video_url);
-        setPhotoReviews(dbPhotos.length > 0 ? dbPhotos : defaultVerifiedReviews);
-        setVideoReviews(dbVideos.length > 0 ? dbVideos : defaultVideoReviews);
+        setPhotoReviews(dbPhotos);
+        setVideoReviews(dbVideos);
       } else {
-        setPhotoReviews(defaultVerifiedReviews);
-        setVideoReviews(defaultVideoReviews);
+        setPhotoReviews([]);
+        setVideoReviews([]);
       }
     } catch (err) {
-      console.log('Using default verified reviews:', err);
-      setPhotoReviews(defaultVerifiedReviews);
-      setVideoReviews(defaultVideoReviews);
+      console.log('Error loading verified reviews:', err);
+      setPhotoReviews([]);
+      setVideoReviews([]);
     }
   };
+
+  const hasPhotos = photoReviews && photoReviews.length > 0;
+  const hasVideos = videoReviews && videoReviews.length > 0;
+
+  if (!hasPhotos && !hasVideos) {
+    return null;
+  }
 
   // Dual Row Photo reviews setup
   const midIndex = Math.ceil(photoReviews.length / 2);
   const row1 = photoReviews.slice(0, midIndex);
   const row2 = photoReviews.slice(midIndex);
 
-  const row1Duplicated = [...row1, ...row1, ...row1];
-  const row2Duplicated = [...row2, ...row2, ...row2];
-  const videosDuplicated = [...videoReviews, ...videoReviews, ...videoReviews];
+  const row1Duplicated = row1.length > 0 ? [...row1, ...row1, ...row1] : [];
+  const row2Duplicated = row2.length > 0 ? [...row2, ...row2, ...row2] : [];
+  const videosDuplicated = videoReviews.length > 0 ? [...videoReviews, ...videoReviews, ...videoReviews] : [];
 
   const handleTogglePlay = () => {
     if (modalVideoRef.current) {
@@ -255,108 +262,111 @@ export default function VerifiedReviews() {
     <section className="py-12 sm:py-20 bg-white border-t border-gray-100 overflow-hidden relative space-y-12">
       
       {/* SECTION 1: VERIFIED REVIEWS (2-ROW PHOTO SCROLLER) */}
-      <div className="space-y-6">
-        
-        {/* Heading matching user screenshot */}
-        <div className="text-center space-y-2 px-4" data-aos="fade-up">
-          <h2 className="text-2xl sm:text-4xl font-black tracking-wider text-black uppercase flex items-center justify-center gap-2">
-            <span>VERIFIED REVIEWS</span>
-          </h2>
-          <div className="flex items-center justify-center gap-2 text-xs font-semibold text-gray-500">
-            <div className="flex text-amber-400">
-              {[...Array(5)].map((_, i) => (
-                <Star key={i} size={14} fill="currentColor" />
-              ))}
-            </div>
-            <span>4.9 / 5 Rated by 35,000+ Customer Wall Setups</span>
-          </div>
-        </div>
-
-        {/* 2-Row Horizontal Photo Marquee (Pauses on Hover) */}
-        <div className="marquee-container space-y-4 sm:space-y-6">
+      {hasPhotos && (
+        <div className="space-y-6">
           
-          {/* ROW 1 (Scrolls Left) */}
-          <div className="flex overflow-hidden">
-            <div className="animate-marquee-left flex gap-4 sm:gap-6 py-2 px-2">
-              {row1Duplicated.map((review, idx) => (
-                <div
-                  key={`r1-${review.id}-${idx}`}
-                  onClick={() => setActivePhotoModal(review)}
-                  className="group relative w-36 h-48 sm:w-56 sm:h-72 rounded-2xl sm:rounded-3xl overflow-hidden cursor-pointer shadow-md hover:shadow-2xl border border-gray-100 transition-all duration-300 shrink-0 bg-gray-100"
-                >
-                  <img
-                    src={review.image_url}
-                    alt={review.customer_name || 'Verified Customer Review'}
-                    className="w-full h-full object-cover group-hover:scale-110 transition duration-500"
-                    loading="lazy"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition duration-300 flex flex-col justify-end p-3 sm:p-4 text-white">
-                    <div className="flex items-center gap-1 text-primary text-xs font-bold mb-1">
-                      <ShieldCheck size={14} />
-                      <span>{review.customer_name || 'Verified Buyer'}</span>
-                    </div>
-                    {review.caption && (
-                      <p className="text-[10px] sm:text-xs text-gray-200 line-clamp-2 leading-snug">
-                        "{review.caption}"
-                      </p>
-                    )}
-                  </div>
-                </div>
-              ))}
+          {/* Heading matching user screenshot */}
+          <div className="text-center space-y-2 px-4" data-aos="fade-up">
+            <h2 className="text-2xl sm:text-4xl font-black tracking-wider text-black uppercase flex items-center justify-center gap-2">
+              <span>VERIFIED REVIEWS</span>
+            </h2>
+            <div className="flex items-center justify-center gap-2 text-xs font-semibold text-gray-500">
+              <div className="flex text-amber-400">
+                {[...Array(5)].map((_, i) => (
+                  <Star key={i} size={14} fill="currentColor" />
+                ))}
+              </div>
+              <span>4.9 / 5 Rated by 35,000+ Customer Wall Setups</span>
             </div>
           </div>
 
-          {/* ROW 2 (Scrolls Right) */}
-          <div className="flex overflow-hidden">
-            <div className="animate-marquee-right flex gap-4 sm:gap-6 py-2 px-2">
-              {row2Duplicated.map((review, idx) => (
-                <div
-                  key={`r2-${review.id}-${idx}`}
-                  onClick={() => setActivePhotoModal(review)}
-                  className="group relative w-36 h-48 sm:w-56 sm:h-72 rounded-2xl sm:rounded-3xl overflow-hidden cursor-pointer shadow-md hover:shadow-2xl border border-gray-100 transition-all duration-300 shrink-0 bg-gray-100"
-                >
-                  <img
-                    src={review.image_url}
-                    alt={review.customer_name || 'Verified Customer Review'}
-                    className="w-full h-full object-cover group-hover:scale-110 transition duration-500"
-                    loading="lazy"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition duration-300 flex flex-col justify-end p-3 sm:p-4 text-white">
-                    <div className="flex items-center gap-1 text-primary text-xs font-bold mb-1">
-                      <ShieldCheck size={14} />
-                      <span>{review.customer_name || 'Verified Buyer'}</span>
+          {/* 2-Row Horizontal Photo Marquee (Pauses on Hover) */}
+          <div className="marquee-container space-y-4 sm:space-y-6">
+            
+            {/* ROW 1 (Scrolls Left) */}
+            <div className="flex overflow-hidden">
+              <div className="animate-marquee-left flex gap-4 sm:gap-6 py-2 px-2">
+                {row1Duplicated.map((review, idx) => (
+                  <div
+                    key={`r1-${review.id}-${idx}`}
+                    onClick={() => setActivePhotoModal(review)}
+                    className="group relative w-36 h-48 sm:w-56 sm:h-72 rounded-2xl sm:rounded-3xl overflow-hidden cursor-pointer shadow-md hover:shadow-2xl border border-gray-100 transition-all duration-300 shrink-0 bg-gray-100"
+                  >
+                    <img
+                      src={review.image_url}
+                      alt={review.customer_name || 'Verified Customer Review'}
+                      className="w-full h-full object-cover group-hover:scale-110 transition duration-500"
+                      loading="lazy"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition duration-300 flex flex-col justify-end p-3 sm:p-4 text-white">
+                      <div className="flex items-center gap-1 text-primary text-xs font-bold mb-1">
+                        <ShieldCheck size={14} />
+                        <span>{review.customer_name || 'Verified Buyer'}</span>
+                      </div>
+                      {review.caption && (
+                        <p className="text-[10px] sm:text-xs text-gray-200 line-clamp-2 leading-snug">
+                          "{review.caption}"
+                        </p>
+                      )}
                     </div>
-                    {review.caption && (
-                      <p className="text-[10px] sm:text-xs text-gray-200 line-clamp-2 leading-snug">
-                        "{review.caption}"
-                      </p>
-                    )}
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
-          </div>
 
+            {/* ROW 2 (Scrolls Right) */}
+            <div className="flex overflow-hidden">
+              <div className="animate-marquee-right flex gap-4 sm:gap-6 py-2 px-2">
+                {row2Duplicated.map((review, idx) => (
+                  <div
+                    key={`r2-${review.id}-${idx}`}
+                    onClick={() => setActivePhotoModal(review)}
+                    className="group relative w-36 h-48 sm:w-56 sm:h-72 rounded-2xl sm:rounded-3xl overflow-hidden cursor-pointer shadow-md hover:shadow-2xl border border-gray-100 transition-all duration-300 shrink-0 bg-gray-100"
+                  >
+                    <img
+                      src={review.image_url}
+                      alt={review.customer_name || 'Verified Customer Review'}
+                      className="w-full h-full object-cover group-hover:scale-110 transition duration-500"
+                      loading="lazy"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition duration-300 flex flex-col justify-end p-3 sm:p-4 text-white">
+                      <div className="flex items-center gap-1 text-primary text-xs font-bold mb-1">
+                        <ShieldCheck size={14} />
+                        <span>{review.customer_name || 'Verified Buyer'}</span>
+                      </div>
+                      {review.caption && (
+                        <p className="text-[10px] sm:text-xs text-gray-200 line-clamp-2 leading-snug">
+                          "{review.caption}"
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+          </div>
         </div>
-      </div>
+      )}
 
       {/* SECTION 2: CUSTOMER VIDEO REELS & UNBOXING (Vertical Video Scroller) */}
-      <div className="space-y-6 pt-4 border-t border-gray-100">
-        
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between px-4 max-w-7xl mx-auto">
-          <div>
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-100 text-red-700 text-xs font-extrabold mb-1">
-              <span className="w-2 h-2 rounded-full bg-red-600 animate-ping"></span>
-              <span>CUSTOMER REELS</span>
+      {hasVideos && (
+        <div className="space-y-6 pt-4 border-t border-gray-100">
+          
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between px-4 max-w-7xl mx-auto">
+            <div>
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-100 text-red-700 text-xs font-extrabold mb-1">
+                <span className="w-2 h-2 rounded-full bg-red-600 animate-ping"></span>
+                <span>CUSTOMER REELS</span>
+              </div>
+              <h3 className="text-xl sm:text-3xl font-black text-gray-900 tracking-tight">
+                Watch Real Customers Unbox & Decorate
+              </h3>
             </div>
-            <h3 className="text-xl sm:text-3xl font-black text-gray-900 tracking-tight">
-              Watch Real Customers Unbox & Decorate
-            </h3>
+            <span className="text-xs text-gray-500 font-semibold mt-1 sm:mt-0">
+              Hover to pause • Click to watch full video
+            </span>
           </div>
-          <span className="text-xs text-gray-500 font-semibold mt-1 sm:mt-0">
-            Hover to pause • Click to watch full video
-          </span>
-        </div>
 
         {/* Video Reels Horizontal Scroller */}
         <div className="marquee-container overflow-hidden">
@@ -420,6 +430,7 @@ export default function VerifiedReviews() {
         </div>
 
       </div>
+      )}
 
 
       {/* PHOTO LIGHTBOX MODAL */}
