@@ -240,29 +240,41 @@ export default function ManageReviews({ initialTab = 'videos' }) {
         console.warn('Supabase save notice:', dbErr);
       }
 
-      // 2. Save to LocalStorage for instant storefront synchronization
-      if (isVideo) {
-        const localVideos = JSON.parse(localStorage.getItem('casit_custom_video_reviews') || '[]');
-        if (editingItem) {
-          const updated = localVideos.map(v => v.id === editingItem.id ? { ...v, ...payload } : v);
-          localStorage.setItem('casit_custom_video_reviews', JSON.stringify(updated));
-          setVideoReviews(prev => prev.map(v => v.id === editingItem.id ? { ...v, ...payload } : v));
+      // 2. Save to LocalStorage for instant storefront synchronization with QuotaExceededError protection
+      try {
+        if (isVideo) {
+          const localVideos = JSON.parse(localStorage.getItem('casit_custom_video_reviews') || '[]');
+          const storagePayload = {
+            ...payload,
+            video_url: (payload.video_url && payload.video_url.length > 50000) ? (finalThumbnailUrl || '') : payload.video_url
+          };
+          if (editingItem) {
+            const updated = localVideos.map(v => v.id === editingItem.id ? { ...v, ...storagePayload } : v);
+            try { localStorage.setItem('casit_custom_video_reviews', JSON.stringify(updated)); } catch (_) {}
+            setVideoReviews(prev => prev.map(v => v.id === editingItem.id ? { ...v, ...payload } : v));
+          } else {
+            const newItem = { id: `custom-v-${Date.now()}`, ...payload };
+            try {
+              localStorage.setItem('casit_custom_video_reviews', JSON.stringify([newItem, ...localVideos]));
+            } catch (_) {}
+            setVideoReviews(prev => [newItem, ...prev]);
+          }
         } else {
-          const newItem = { id: `custom-v-${Date.now()}`, ...payload };
-          localStorage.setItem('casit_custom_video_reviews', JSON.stringify([newItem, ...localVideos]));
-          setVideoReviews(prev => [newItem, ...prev]);
+          const localPhotos = JSON.parse(localStorage.getItem('casit_custom_photo_reviews') || '[]');
+          if (editingItem) {
+            const updated = localPhotos.map(p => p.id === editingItem.id ? { ...p, ...payload } : p);
+            try { localStorage.setItem('casit_custom_photo_reviews', JSON.stringify(updated)); } catch (_) {}
+            setPhotoReviews(prev => prev.map(p => p.id === editingItem.id ? { ...p, ...payload } : p));
+          } else {
+            const newItem = { id: `custom-p-${Date.now()}`, ...payload };
+            try {
+              localStorage.setItem('casit_custom_photo_reviews', JSON.stringify([newItem, ...localPhotos]));
+            } catch (_) {}
+            setPhotoReviews(prev => [newItem, ...prev]);
+          }
         }
-      } else {
-        const localPhotos = JSON.parse(localStorage.getItem('casit_custom_photo_reviews') || '[]');
-        if (editingItem) {
-          const updated = localPhotos.map(p => p.id === editingItem.id ? { ...p, ...payload } : p);
-          localStorage.setItem('casit_custom_photo_reviews', JSON.stringify(updated));
-          setPhotoReviews(prev => prev.map(p => p.id === editingItem.id ? { ...p, ...payload } : p));
-        } else {
-          const newItem = { id: `custom-p-${Date.now()}`, ...payload };
-          localStorage.setItem('casit_custom_photo_reviews', JSON.stringify([newItem, ...localPhotos]));
-          setPhotoReviews(prev => [newItem, ...prev]);
-        }
+      } catch (storageErr) {
+        console.warn('LocalStorage save notice:', storageErr);
       }
 
       setSuccessMsg(isVideo ? 'Customer Video Reel published successfully!' : 'Photo review published successfully!');
@@ -274,7 +286,7 @@ export default function ManageReviews({ initialTab = 'videos' }) {
       fetchReviews();
     } catch (err) {
       console.error(err);
-      setError('Failed to save review item. Please check inputs and try again.');
+      setError(err?.message || 'Failed to save review item. Please check inputs and try again.');
     } finally {
       setUploading(false);
     }

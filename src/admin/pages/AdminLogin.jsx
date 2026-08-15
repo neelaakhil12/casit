@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import logo from '../../assets/logo.png';
-import { Mail, KeyRound, ArrowRight, X, CheckCircle, Lock, AlertCircle, RefreshCw } from 'lucide-react';
+import { Mail, KeyRound, ArrowRight, X, CheckCircle, Lock, AlertCircle, RefreshCw, Eye, EyeOff } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
 export default function AdminLogin({ onLogin }) {
   const [email, setEmail] = useState('casithelpline@gmail.com');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -186,13 +187,21 @@ export default function AdminLogin({ onLogin }) {
                 <KeyRound size={16} />
               </span>
               <input
-                type="password"
+                type={showPassword ? 'text' : 'password'}
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl text-sm font-semibold focus:ring-2 focus:ring-primary focus:bg-white outline-none"
+                className="w-full pl-10 pr-11 py-3 bg-gray-50 border border-gray-200 rounded-2xl text-sm font-semibold focus:ring-2 focus:ring-primary focus:bg-white outline-none"
                 placeholder="••••••••"
               />
+              <button
+                type="button"
+                onClick={() => setShowPassword(prev => !prev)}
+                className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-gray-400 hover:text-gray-700 transition"
+                title={showPassword ? 'Hide password' : 'Show password'}
+              >
+                {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
             </div>
           </div>
 

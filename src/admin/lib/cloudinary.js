@@ -42,6 +42,7 @@ export const uploadVideoToCloudinary = async (file) => {
       const formData = new FormData();
       formData.append('file', file);
       formData.append('upload_preset', uploadPreset);
+      formData.append('resource_type', 'video');
 
       const response = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/video/upload`, {
         method: 'POST',
@@ -53,18 +54,19 @@ export const uploadVideoToCloudinary = async (file) => {
         if (data.secure_url) {
           return data.secure_url;
         }
+      } else {
+        const errData = await response.json().catch(() => ({}));
+        console.warn('Cloudinary video upload response error:', errData);
       }
     } catch (error) {
-      console.warn('Cloudinary video upload failed, falling back to Data URL:', error);
+      console.warn('Cloudinary video upload failed, using URL fallback:', error);
     }
   }
 
-  // Fallback: Convert video file to base64 Data URL or Object URL
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onloadend = () => resolve(reader.result);
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
+  // Fallback: Use object URL or safe fallback to prevent browser localStorage quota crash
+  if (file instanceof File || file instanceof Blob) {
+    return URL.createObjectURL(file);
+  }
+  return String(file);
 };
 
