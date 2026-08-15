@@ -152,13 +152,35 @@ export const defaultHubProducts = [
 
 const STORAGE_KEY = 'casit_custom_print_types';
 
-/** Get hub products — admin overrides first, fallback to defaults */
+/** Get hub products — admin overrides first with auto-sanitization fallback */
 export function getHubProducts() {
   try {
     const stored = localStorage.getItem(STORAGE_KEY);
     if (stored) {
       const parsed = JSON.parse(stored);
-      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return parsed.map((item, idx) => {
+          const fallback = defaultHubProducts[idx] || defaultHubProducts[0];
+          const rawSizes = item.defaultSizes || item.sizes || fallback.defaultSizes;
+          const safeSizes = Array.isArray(rawSizes) && rawSizes.length > 0
+            ? rawSizes.map(s => ({
+                code: s.code || s.name || 'A4',
+                label: s.label || s.name || 'A4',
+                dimensions: s.dimensions || '',
+                basePrice: Number(s.basePrice || s.price || 129),
+                framePrice: Number(s.framePrice !== undefined ? s.framePrice : (item.framePrice || fallback.framePrice || 250)),
+                imageCount: Number(s.imageCount || item.imageCount || fallback.imageCount || 1)
+              }))
+            : fallback.defaultSizes;
+
+          return {
+            ...fallback,
+            ...item,
+            defaultSizes: safeSizes,
+            imageCount: Number(item.imageCount || fallback.imageCount || 1)
+          };
+        });
+      }
     }
   } catch (_) {}
   return defaultHubProducts;

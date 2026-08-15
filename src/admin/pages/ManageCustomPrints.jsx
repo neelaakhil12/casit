@@ -85,15 +85,29 @@ export default function ManageCustomPrints() {
   };
 
   const openEdit = (idx) => {
-    const item = products[idx];
+    const item = products[idx] || defaultHubProducts[0];
+    const rawSizes = Array.isArray(item.defaultSizes) && item.defaultSizes.length > 0
+      ? item.defaultSizes
+      : (Array.isArray(item.sizes) ? item.sizes : [{ code: 'A4', label: 'A4', dimensions: '8.3 x 11.7 in', basePrice: 129, framePrice: 250, imageCount: 1 }]);
+    
+    const safeSizes = rawSizes.map(s => ({
+      code: s.code || s.name || 'A4',
+      label: s.label || s.name || 'A4',
+      dimensions: s.dimensions || '',
+      basePrice: Number(s.basePrice || s.price || 129),
+      framePrice: Number(s.framePrice !== undefined ? s.framePrice : (item.framePrice || 250)),
+      imageCount: Number(s.imageCount || item.imageCount || 1)
+    }));
+
     setForm({
       ...item,
-      imageCount: item.imageCount ?? (item.id === 'split-3' ? 3 : item.id === 'split-2x2' ? 4 : 1),
-      allowFraming: item.allowFraming ?? true,
-      allowFrameOnly: item.allowFrameOnly ?? true,
-      framePrice: item.framePrice ?? 250,
-      frameBadge: item.frameBadge ?? 'Acrylic Shield',
-      frameStyles: item.frameStyles ? [...item.frameStyles] : [...DEFAULT_FRAME_STYLES]
+      defaultSizes: safeSizes,
+      imageCount: Number(item.imageCount || 1),
+      allowFraming: item.allowFraming !== false,
+      allowFrameOnly: item.allowFrameOnly !== false,
+      framePrice: Number(item.framePrice || 250),
+      frameBadge: item.frameBadge || 'Acrylic Shield',
+      frameStyles: Array.isArray(item.frameStyles) && item.frameStyles.length > 0 ? [...item.frameStyles] : [...DEFAULT_FRAME_STYLES]
     });
     setEditingIdx(idx);
     setImageFile(null);
@@ -139,15 +153,6 @@ export default function ManageCustomPrints() {
     updated[idx + 1] = updated[idx];
     updated[idx] = temp;
     persist(updated);
-  };
-
-  const handleReset = () => {
-    if (!window.confirm('Reset all custom print types to original defaults? Any custom types will be replaced.')) return;
-    resetHubProducts();
-    setProducts(defaultHubProducts);
-    window.dispatchEvent(new StorageEvent('storage', { key: 'casit_custom_print_types' }));
-    setSuccessMsg('Reset to default custom print types.');
-    setTimeout(() => setSuccessMsg(''), 3000);
   };
 
   // Form field helpers
@@ -267,13 +272,6 @@ export default function ManageCustomPrints() {
         </div>
 
         <div className="flex items-center gap-3">
-          <button
-            onClick={handleReset}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-2xl border border-gray-300 text-xs font-bold text-gray-700 hover:bg-gray-100 transition shadow-sm"
-            title="Reset to initial 6 presets"
-          >
-            <RotateCcw size={14} /> Reset Defaults
-          </button>
           <button
             onClick={openAdd}
             className="btn-primary flex items-center gap-2 !py-2.5 !px-5 text-xs font-black shadow-yellow-glow"
