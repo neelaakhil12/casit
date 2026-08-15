@@ -26,7 +26,7 @@ export default function CustomizePoster() {
   const [selectedQty, setSelectedQty] = useState(1);
   const [uploadedFiles, setUploadedFiles] = useState([]);
   const [uploadedPreviews, setUploadedPreviews] = useState([]);
-  const [wantsFrame, setWantsFrame] = useState(false);
+  const [customFormat, setCustomFormat] = useState('poster'); // 'poster' | 'both' | 'frame'
   const [selectedFrameStyle, setSelectedFrameStyle] = useState('Classic Matte Black Frame');
 
   // Hub Products — loaded from admin-editable localStorage or defaults
@@ -48,6 +48,7 @@ export default function CustomizePoster() {
       if (typeDef) {
         setSelectedSize(typeDef.defaultSizes[0].code);
         setSelectedQty(1);
+        setCustomFormat('poster');
         setUploadedFiles([]);
         setUploadedPreviews([]);
       }
@@ -55,24 +56,32 @@ export default function CustomizePoster() {
   }, [selectedType]);
 
   const sizeOptions = currentTypeObj.defaultSizes;
-
   const currentSizeObj = sizeOptions.find(s => s.code === selectedSize) || sizeOptions[0];
 
   // Dynamic framing configuration from admin panel
-  const allowFraming = currentTypeObj.allowFraming ?? (selectedType === 'single' || selectedType?.startsWith('split'));
-  const framePrice = currentTypeObj.framePrice ?? 250;
+  const allowFraming = currentTypeObj.allowFraming !== false && (selectedType === 'single' || selectedType?.startsWith('split') || currentTypeObj.allowFraming);
+  const allowFrameOnly = currentTypeObj.allowFrameOnly !== false && allowFraming;
   const frameStyles = currentTypeObj.frameStyles && currentTypeObj.frameStyles.length > 0
     ? currentTypeObj.frameStyles
     : ['Classic Matte Black Frame', 'Natural Oak Wood Frame', 'Modern White Frame', 'Dark Walnut Frame'];
   const frameBadge = currentTypeObj.frameBadge || 'Acrylic Shield';
 
-  // Pricing: (size base price + frame add-on) × quantity
-  const baseP = currentSizeObj.basePrice || 129;
-  const frameAddon = wantsFrame ? framePrice : 0;
-  const perUnitPrice = baseP + frameAddon;
+  // Pricing: Poster Price vs Frame Price vs Both
+  const sizePosterPrice = currentSizeObj.basePrice || 129;
+  const sizeFramePrice = currentSizeObj.framePrice || currentTypeObj.framePrice || 250;
+
+  const wantsPoster = customFormat === 'poster' || customFormat === 'both';
+  const wantsFrame = customFormat === 'frame' || customFormat === 'both';
+
+  let perUnitPrice = sizePosterPrice;
+  if (customFormat === 'both') {
+    perUnitPrice = sizePosterPrice + sizeFramePrice;
+  } else if (customFormat === 'frame') {
+    perUnitPrice = sizeFramePrice;
+  }
   const totalPrice = perUnitPrice * selectedQty;
 
-  // Image uploads = one per unit ordered
+  // Image uploads = one per unit ordered (optional if buying frame only)
   const requiredImagesCount = selectedQty;
 
   // Handle upload for a specific slot index
@@ -104,29 +113,31 @@ export default function CustomizePoster() {
 
   const handleAddToCart = () => {
     const filledSlots = uploadedPreviews.filter(Boolean);
-    if (filledSlots.length === 0) {
+    if (wantsPoster && filledSlots.length === 0) {
       alert('Please upload at least Image 1 before adding to cart!');
       triggerSlot(0);
       return;
     }
 
     const typeTitle = currentTypeObj.typeLabel;
-    const firstPreview = filledSlots[0];
+    const firstPreview = filledSlots[0] || (currentTypeObj.image || '/custom-prints/custom-poster.jpg');
+    const formatName = customFormat === 'both' ? 'Poster + Frame' : (customFormat === 'frame' ? 'Custom Frame Only' : 'Poster Print Only');
+
     const customProduct = {
       id: `custom-${Date.now()}`,
-      name: `${typeTitle} (${selectedSize})`,
+      name: `${typeTitle} - ${formatName} (${selectedSize})`,
       category: selectedType?.startsWith('split') ? 'split-posters' : (selectedType === 'retro' ? 'polaroids' : 'customized-posters'),
-      basePrice: perUnitPrice,
-      framePrice: 250,
-      posterFramePrice: perUnitPrice,
+      basePrice: sizePosterPrice,
+      framePrice: sizeFramePrice,
+      posterFramePrice: sizePosterPrice + sizeFramePrice,
       rating: 4.9,
       reviewsCount: 35000,
       image: firstPreview,
-      description: `Custom Art Print. Type: ${typeTitle}, Size: ${selectedSize}, Qty: ${selectedQty}, Framing: ${wantsFrame ? selectedFrameStyle : 'Unframed'}. Total ${filledSlots.length} custom photo uploads.`,
+      description: `Custom Wall Art. Type: ${typeTitle}, Format: ${formatName}, Size: ${selectedSize}, Qty: ${selectedQty}, Frame: ${wantsFrame ? selectedFrameStyle : 'Unframed'}. ${filledSlots.length > 0 ? `Total ${filledSlots.length} custom photo uploads.` : ''}`,
       specs: {
         paper: selectedType === 'retro' || selectedType === 'pocket' || selectedType === 'photobooth' ? '350 GSM High-Gloss Ultra Pearl Photo Sheet' : '300 GSM Ultra-Thick Matte Photo Paper',
         printing: '12-Color Archival Pigment Inks',
-        finish: 'Anti-Glare Smooth Coating',
+        finish: wantsFrame ? `Mounted in ${selectedFrameStyle} with Acrylic Shield` : 'Anti-Glare Smooth Velvet Coating',
         packaging: wantsFrame ? 'Boxed with Corner Protectors' : 'Double-Walled Cardboard Mailer / Tube'
       }
     };
@@ -134,14 +145,14 @@ export default function CustomizePoster() {
     addToCart(
       customProduct,
       selectedSize,
-      true,
+      wantsPoster,
       wantsFrame,
       selectedQty,
-      firstPreview,
+      filledSlots[0] || null,
       wantsFrame ? selectedFrameStyle : null
     );
 
-    alert(`🎉 Successfully added ${selectedQty} × ${typeTitle} (${selectedSize}) to your cart!`);
+    alert(`🎉 Successfully added ${selectedQty} × ${typeTitle} [${formatName}] (${selectedSize}) to your cart!`);
     navigateTo('cart');
   };
 
@@ -424,23 +435,144 @@ export default function CustomizePoster() {
                       <button
                         key={sz.code}
                         onClick={() => setSelectedSize(sz.code)}
-                        className={`min-w-[68px] py-2 px-4 rounded-full text-xs font-bold transition border ${
+                        className={`py-2.5 px-4 rounded-2xl text-xs font-bold transition border flex items-center gap-2 ${
                           isSelected 
                             ? 'bg-black text-white border-black shadow-sm' 
                             : 'bg-white text-gray-800 border-gray-300 hover:border-gray-400'
                         }`}
                       >
-                        {sz.label}
+                        <span>{sz.label}</span>
+                        <span className={`text-[10px] ${isSelected ? 'text-primary' : 'text-gray-400'}`}>
+                          {sz.dimensions}
+                        </span>
                       </button>
                     );
                   })}
                 </div>
               </div>
 
-              {/* 2. Quantity Stepper */}
+              {/* 2. Format & Framing Option (Poster vs Poster+Frame vs Frame Only) */}
+              {allowFraming && (
+                <div className="space-y-3 p-4 bg-gray-50 rounded-3xl border border-gray-200">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-extrabold text-gray-900 uppercase tracking-wider block">
+                      2. Choose Format
+                    </label>
+                    {frameBadge && (
+                      <span className="text-[10px] bg-primary/20 text-yellow-900 font-extrabold px-2.5 py-0.5 rounded-full">
+                        {frameBadge}
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                    {/* Format 1: Poster Print Only */}
+                    <button
+                      type="button"
+                      onClick={() => setCustomFormat('poster')}
+                      className={`p-3 rounded-2xl border text-left transition relative flex flex-col justify-between ${
+                        customFormat === 'poster'
+                          ? 'bg-black text-white border-black shadow-md'
+                          : 'bg-white text-gray-800 border-gray-200 hover:border-black'
+                      }`}
+                    >
+                      <div>
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-xs font-black">🖼️ Poster Only</span>
+                          {customFormat === 'poster' && <Check size={14} className="text-primary" />}
+                        </div>
+                        <p className={`text-[10px] ${customFormat === 'poster' ? 'text-gray-300' : 'text-gray-500'}`}>
+                          Ultra-thick photo print
+                        </p>
+                      </div>
+                      <span className={`text-xs font-black mt-2 block ${customFormat === 'poster' ? 'text-primary' : 'text-black'}`}>
+                        ₹{sizePosterPrice}
+                      </span>
+                    </button>
+
+                    {/* Format 2: Poster + Frame */}
+                    <button
+                      type="button"
+                      onClick={() => setCustomFormat('both')}
+                      className={`p-3 rounded-2xl border text-left transition relative flex flex-col justify-between ${
+                        customFormat === 'both'
+                          ? 'bg-black text-white border-black shadow-md'
+                          : 'bg-white text-gray-800 border-gray-200 hover:border-black'
+                      }`}
+                    >
+                      <div>
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-xs font-black">✨ Poster + Frame</span>
+                          {customFormat === 'both' && <Check size={14} className="text-primary" />}
+                        </div>
+                        <p className={`text-[10px] ${customFormat === 'both' ? 'text-gray-300' : 'text-gray-500'}`}>
+                          Mounted & ready to hang
+                        </p>
+                      </div>
+                      <span className={`text-xs font-black mt-2 block ${customFormat === 'both' ? 'text-primary' : 'text-black'}`}>
+                        ₹{sizePosterPrice + sizeFramePrice}
+                      </span>
+                    </button>
+
+                    {/* Format 3: Custom Frame Only */}
+                    {allowFrameOnly && (
+                      <button
+                        type="button"
+                        onClick={() => setCustomFormat('frame')}
+                        className={`p-3 rounded-2xl border text-left transition relative flex flex-col justify-between ${
+                          customFormat === 'frame'
+                            ? 'bg-black text-white border-black shadow-md'
+                            : 'bg-white text-gray-800 border-gray-200 hover:border-black'
+                        }`}
+                      >
+                        <div>
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-xs font-black">🔲 Frame Only</span>
+                            {customFormat === 'frame' && <Check size={14} className="text-primary" />}
+                          </div>
+                          <p className={`text-[10px] ${customFormat === 'frame' ? 'text-gray-300' : 'text-gray-500'}`}>
+                            Empty acrylic frame
+                          </p>
+                        </div>
+                        <span className={`text-xs font-black mt-2 block ${customFormat === 'frame' ? 'text-primary' : 'text-black'}`}>
+                          ₹{sizeFramePrice}
+                        </span>
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Frame Style Picker (Visible when Frame is included) */}
+                  {wantsFrame && frameStyles.length > 0 && (
+                    <div className="pt-3 border-t border-gray-200/80 space-y-2">
+                      <label className="text-[11px] font-extrabold text-gray-700 block">
+                        Select Frame Finish:
+                      </label>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        {frameStyles.map((style) => (
+                          <button
+                            key={style}
+                            type="button"
+                            onClick={() => setSelectedFrameStyle(style)}
+                            className={`py-2 px-3 rounded-xl text-xs font-bold text-left transition border flex items-center justify-between ${
+                              selectedFrameStyle === style
+                                ? 'bg-black text-white border-black shadow-sm'
+                                : 'bg-white text-gray-800 border-gray-200 hover:border-black'
+                            }`}
+                          >
+                            <span>{style}</span>
+                            {selectedFrameStyle === style && <Check size={13} className="text-primary" />}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* 3. Quantity Stepper */}
               <div className="space-y-2.5">
                 <label className="text-xs font-bold text-gray-900 uppercase tracking-wider block">
-                  Quantity
+                  {allowFraming ? '3.' : '2.'} Quantity
                 </label>
                 <div className="flex items-center gap-3">
                   <button
@@ -464,14 +596,16 @@ export default function CustomizePoster() {
                 </div>
               </div>
 
-              {/* 3. Pricing Banner Box */}
+              {/* 4. Pricing Banner Box */}
               <div className="p-4 rounded-2xl border border-gray-300 bg-white flex items-center justify-between shadow-sm">
                 <div className="flex items-baseline gap-1">
                   <span className="text-2xl sm:text-3xl font-black text-gray-900">₹{perUnitPrice}</span>
-                  <span className="text-xs font-semibold text-gray-500">/ {selectedType === 'photobooth' ? 'strip' : selectedType?.startsWith('split') ? 'set' : 'poster'}</span>
+                  <span className="text-xs font-semibold text-gray-500">
+                    / {customFormat === 'frame' ? 'frame' : (selectedType === 'photobooth' ? 'strip' : selectedType?.startsWith('split') ? 'set' : 'poster')}
+                  </span>
                 </div>
                 <div className="text-right text-xs font-bold text-gray-700">
-                  Total ₹{totalPrice} · {selectedQty} {selectedType === 'photobooth' ? 'strip' : 'print'}{selectedQty > 1 ? 's' : ''} · {selectedSize}
+                  Total ₹{totalPrice} · {selectedQty} × {customFormat === 'both' ? 'Poster + Frame' : (customFormat === 'frame' ? 'Custom Frame' : 'Poster Print')} · {selectedSize}
                 </div>
               </div>
 
@@ -487,12 +621,19 @@ export default function CustomizePoster() {
                 />
               ))}
 
-              {/* 4. Per-slot image upload buttons */}
+              {/* 5. Per-slot image upload buttons */}
               <div className="space-y-3">
-                <label className="text-sm font-extrabold text-gray-900 flex items-center gap-1.5">
-                  <span>Upload {requiredImagesCount} Image{requiredImagesCount > 1 ? 's' : ''} 👇</span>
-                  <span className="text-red-500">*</span>
-                </label>
+                <div className="flex items-center justify-between">
+                  <label className="text-sm font-extrabold text-gray-900 flex items-center gap-1.5">
+                    <span>
+                      {customFormat === 'frame' ? 'Upload Photo (Optional Preview)' : `Upload ${requiredImagesCount} Image${requiredImagesCount > 1 ? 's' : ''}`}
+                    </span>
+                    {wantsPoster && <span className="text-red-500">*</span>}
+                  </label>
+                  {customFormat === 'frame' && (
+                    <span className="text-[10px] text-gray-400 font-semibold">(Empty frame ordered)</span>
+                  )}
+                </div>
 
                 <div className={`grid gap-2 ${
                   requiredImagesCount === 1 ? 'grid-cols-1' :
@@ -539,66 +680,17 @@ export default function CustomizePoster() {
                 </div>
 
                 {/* Progress indicator */}
-                <div className="flex items-center justify-between text-[11px] text-gray-500 font-semibold">
-                  <span>{uploadedPreviews.filter(Boolean).length} of {requiredImagesCount} uploaded</span>
-                  {uploadedPreviews.filter(Boolean).length === requiredImagesCount && (
-                    <span className="text-green-600 font-bold flex items-center gap-1">
-                      ✓ All images ready!
-                    </span>
-                  )}
-                </div>
-              </div>
-
-              {/* Optional Framing Option (Admin Configurable) */}
-              {allowFraming && (
-                <div className="p-4 bg-gray-50 rounded-2xl border border-gray-200 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <input 
-                        type="checkbox"
-                        id="frameToggle"
-                        checked={wantsFrame}
-                        onChange={(e) => setWantsFrame(e.target.checked)}
-                        className="w-4 h-4 rounded text-black accent-black cursor-pointer"
-                      />
-                      <label htmlFor="frameToggle" className="text-xs font-extrabold text-gray-900 cursor-pointer">
-                        Add Framing (+₹{framePrice} / {selectedType === 'photobooth' ? 'strip' : selectedType?.startsWith('split') ? 'set' : 'print'})
-                      </label>
-                    </div>
-                    {frameBadge && (
-                      <span className="text-[10px] bg-primary/20 text-yellow-900 font-extrabold px-2.5 py-0.5 rounded-full">
-                        {frameBadge}
+                {wantsPoster && (
+                  <div className="flex items-center justify-between text-[11px] text-gray-500 font-semibold">
+                    <span>{uploadedPreviews.filter(Boolean).length} of {requiredImagesCount} uploaded</span>
+                    {uploadedPreviews.filter(Boolean).length === requiredImagesCount && (
+                      <span className="text-green-600 font-bold flex items-center gap-1">
+                        ✓ All images ready!
                       </span>
                     )}
                   </div>
-
-                  {/* Frame Style Selector (Visible when framing checked) */}
-                  {wantsFrame && frameStyles.length > 0 && (
-                    <div className="pt-2 border-t border-gray-200/80 space-y-2">
-                      <label className="text-[11px] font-bold text-gray-700 block">
-                        Select Frame Finish:
-                      </label>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                        {frameStyles.map((style) => (
-                          <button
-                            key={style}
-                            type="button"
-                            onClick={() => setSelectedFrameStyle(style)}
-                            className={`py-2 px-3 rounded-xl text-xs font-bold text-left transition border flex items-center justify-between ${
-                              selectedFrameStyle === style
-                                ? 'bg-black text-white border-black shadow-sm'
-                                : 'bg-white text-gray-800 border-gray-200 hover:border-black'
-                            }`}
-                          >
-                            <span>{style}</span>
-                            {selectedFrameStyle === style && <Check size={13} className="text-primary" />}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
+                )}
+              </div>
 
               {/* 5. Add to Cart Button (Matching Screenshot 2) */}
               <button
