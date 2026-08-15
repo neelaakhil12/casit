@@ -42,13 +42,15 @@ const emptyProduct = () => ({
   image: '',
   badge: 'New Style',
   typeLabel: 'New Print Type',
+  imageCount: 1,
   allowFraming: true,
+  allowFrameOnly: true,
   framePrice: 250,
   frameBadge: 'Acrylic Shield',
   frameStyles: [...DEFAULT_FRAME_STYLES],
   defaultSizes: [
-    { code: 'A4', label: 'A4', dimensions: '8.3 x 11.7 in', basePrice: 199 },
-    { code: 'A3', label: 'A3', dimensions: '11.7 x 16.5 in', basePrice: 299 }
+    { code: 'A4', label: 'A4', dimensions: '8.3 x 11.7 in', basePrice: 199, framePrice: 250, imageCount: 1 },
+    { code: 'A3', label: 'A3', dimensions: '11.7 x 16.5 in', basePrice: 299, framePrice: 350, imageCount: 1 }
   ]
 });
 
@@ -86,7 +88,9 @@ export default function ManageCustomPrints() {
     const item = products[idx];
     setForm({
       ...item,
+      imageCount: item.imageCount ?? (item.id === 'split-3' ? 3 : item.id === 'split-2x2' ? 4 : 1),
       allowFraming: item.allowFraming ?? true,
+      allowFrameOnly: item.allowFrameOnly ?? true,
       framePrice: item.framePrice ?? 250,
       frameBadge: item.frameBadge ?? 'Acrylic Shield',
       frameStyles: item.frameStyles ? [...item.frameStyles] : [...DEFAULT_FRAME_STYLES]
@@ -574,6 +578,28 @@ export default function ManageCustomPrints() {
                       />
                     </div>
 
+                    {/* Image Upload Buttons Count Setting */}
+                    <div className="p-4 bg-amber-50/70 rounded-2xl border border-amber-200 flex items-center justify-between">
+                      <div>
+                        <label className="text-xs font-black text-amber-950 block">
+                          📷 Image Upload Buttons Count (Default per unit)
+                        </label>
+                        <span className="text-[11px] text-amber-800 font-medium">
+                          Number of image upload buttons shown to the customer (e.g. 1 for single poster, 3 for 3-piece split, 4 for 2x2 grid)
+                        </span>
+                      </div>
+                      <div className="w-24">
+                        <input
+                          type="number"
+                          min={1}
+                          max={50}
+                          value={form.imageCount ?? 1}
+                          onChange={e => setField('imageCount', Math.max(1, Number(e.target.value)))}
+                          className="w-full text-center font-black text-sm p-2 bg-white border border-amber-300 rounded-xl outline-none focus:ring-2 focus:ring-amber-500 text-amber-950"
+                        />
+                      </div>
+                    </div>
+
                     <div className="grid grid-cols-2 gap-3">
                       <div>
                         <label className="text-xs font-bold text-gray-700 block mb-1">Button Text</label>
@@ -605,7 +631,7 @@ export default function ManageCustomPrints() {
                     <div className="flex items-center justify-between">
                       <div>
                         <h4 className="text-xs font-extrabold text-gray-800">Size Options & Base Prices ({form.defaultSizes.length})</h4>
-                        <p className="text-[10px] text-gray-500">Each size has its own base price. Total price = Size Base Price × Quantity.</p>
+                        <p className="text-[10px] text-gray-500">Each size has its own poster price, frame price, and image upload count.</p>
                       </div>
                       <button
                         type="button"
@@ -625,6 +651,7 @@ export default function ManageCustomPrints() {
                         const posterP = Number(size.basePrice) || 0;
                         const frameP = Number(size.framePrice ?? form.framePrice ?? 0);
                         const bothP = posterP + frameP;
+                        const imgCount = Number(size.imageCount ?? form.imageCount ?? 1);
                         return (
                           <div key={i} className="p-4 bg-gray-50 border border-gray-200 rounded-2xl space-y-3">
                             <div className="flex items-center justify-between">
@@ -637,7 +664,7 @@ export default function ManageCustomPrints() {
                                 <Trash2 size={13} />
                               </button>
                             </div>
-                            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
+                            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
                               <div>
                                 <label className="text-[10px] font-bold text-gray-500 block mb-1">Code (internal)</label>
                                 <input
@@ -690,6 +717,18 @@ export default function ManageCustomPrints() {
                                   placeholder="250"
                                 />
                               </div>
+                              <div>
+                                <label className="text-[10px] font-bold text-emerald-700 block mb-1">📷 Images</label>
+                                <input
+                                  type="number"
+                                  value={size.imageCount !== undefined ? size.imageCount : (form.imageCount ?? 1)}
+                                  onChange={e => updateSize(i, 'imageCount', Math.max(1, Number(e.target.value)))}
+                                  className="w-full text-xs p-2 bg-emerald-50 border border-emerald-300 rounded-lg outline-none focus:ring-1 focus:ring-emerald-500 font-black text-emerald-950"
+                                  min={1}
+                                  max={50}
+                                  title="Number of image upload buttons required for this size"
+                                />
+                              </div>
                             </div>
 
                             {/* Live Pricing Breakdown Bar */}
@@ -702,6 +741,9 @@ export default function ManageCustomPrints() {
                               </span>
                               <span className="font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-lg border border-emerald-200">
                                 ✨ Poster + Frame: <strong className="font-black">₹{bothP}</strong>
+                              </span>
+                              <span className="font-bold text-gray-500 bg-gray-100 px-2 py-0.5 rounded-lg">
+                                📷 {imgCount} Image Button{imgCount > 1 ? 's' : ''}
                               </span>
                             </div>
                           </div>
