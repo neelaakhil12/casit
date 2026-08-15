@@ -49,6 +49,7 @@ export default function ManageReviews({ initialTab = 'videos' }) {
   const [imageFile, setImageFile] = useState(null);
   const [videoFile, setVideoFile] = useState(null);
   const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const [error, setError] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
 
@@ -148,6 +149,7 @@ export default function ManageReviews({ initialTab = 'videos' }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setUploading(true);
+    setUploadProgress(0);
     setError('');
 
     try {
@@ -157,7 +159,7 @@ export default function ManageReviews({ initialTab = 'videos' }) {
       // Upload Cover Thumbnail if file selected
       if (imageFile) {
         try {
-          finalThumbnailUrl = await uploadImageToCloudinary(imageFile);
+          finalThumbnailUrl = await uploadImageToCloudinary(imageFile, (p) => setUploadProgress(p));
         } catch (uploadErr) {
           console.warn('Image upload fallback:', uploadErr);
         }
@@ -166,7 +168,7 @@ export default function ManageReviews({ initialTab = 'videos' }) {
       // Upload Video if file selected
       if (videoFile) {
         try {
-          finalVideoUrl = await uploadVideoToCloudinary(videoFile);
+          finalVideoUrl = await uploadVideoToCloudinary(videoFile, (p) => setUploadProgress(p));
         } catch (uploadErr) {
           console.warn('Video upload fallback:', uploadErr);
         }
@@ -671,29 +673,49 @@ export default function ManageReviews({ initialTab = 'videos' }) {
                 />
               </div>
 
+              {/* LIVE UPLOAD PROGRESS BAR */}
+              {uploading && (
+                <div className="space-y-1.5 p-3 rounded-2xl bg-amber-50 border border-amber-200">
+                  <div className="flex items-center justify-between text-xs font-bold text-gray-800">
+                    <span className="flex items-center gap-1.5">
+                      <div className="w-3.5 h-3.5 border-2 border-amber-600 border-t-transparent rounded-full animate-spin"></div>
+                      <span>Uploading media to Cloudinary...</span>
+                    </span>
+                    <span className="text-amber-700 font-extrabold">{uploadProgress}%</span>
+                  </div>
+                  <div className="w-full bg-amber-200/60 h-2 rounded-full overflow-hidden">
+                    <div 
+                      className="bg-amber-500 h-full transition-all duration-200 rounded-full"
+                      style={{ width: `${Math.max(uploadProgress, 5)}%` }}
+                    />
+                  </div>
+                </div>
+              )}
+
               {/* SUBMIT BUTTONS */}
               <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-100">
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="px-6 py-3 rounded-xl border border-gray-200 text-xs font-bold text-gray-700 hover:bg-gray-100 transition"
+                  disabled={uploading}
+                  className="px-6 py-3 rounded-xl border border-gray-200 text-xs font-bold text-gray-700 hover:bg-gray-100 transition disabled:opacity-50"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={uploading}
-                  className="btn-primary !py-3 !px-8 text-xs font-black shadow-yellow-glow flex items-center gap-2"
+                  className="btn-primary !py-3 !px-8 text-xs font-black shadow-yellow-glow flex items-center gap-2 disabled:opacity-60"
                 >
                   {uploading ? (
                     <>
                       <div className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin"></div>
-                      <span>Saving & Uploading...</span>
+                      <span>Uploading ({uploadProgress}%)...</span>
                     </>
                   ) : (
                     <>
                       <Sparkles size={16} />
-                      <span>{editingItem ? 'Save Changes' : 'Publish Reel'}</span>
+                      <span>{editingItem ? 'Save Changes' : activeTab === 'videos' ? 'Publish Reel' : 'Publish Review'}</span>
                     </>
                   )}
                 </button>
