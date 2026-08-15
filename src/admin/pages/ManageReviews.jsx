@@ -67,46 +67,24 @@ export default function ManageReviews({ initialTab = 'videos' }) {
   const fetchReviews = async () => {
     setLoading(true);
     try {
-      // 1. Check localStorage first
-      const localPhotos = JSON.parse(localStorage.getItem('casit_custom_photo_reviews') || '[]');
-      const localVideos = JSON.parse(localStorage.getItem('casit_custom_video_reviews') || '[]');
-
-      // 2. Fetch from Supabase
       const { data, error } = await supabase
         .from('verified_reviews')
         .select('*')
         .order('created_at', { ascending: false });
 
-      if (error || !data || data.length === 0) {
-        setPhotoReviews([...localPhotos, ...defaultVerifiedReviews]);
-        setVideoReviews([...localVideos, ...defaultVideoReviews]);
-      } else {
+      if (!error && data && data.length > 0) {
         const photos = data.filter(d => !d.video_url);
         const videos = data.filter(d => !!d.video_url);
-        
-        const mergedPhotos = [...localPhotos, ...photos];
-        defaultVerifiedReviews.forEach(def => {
-          if (!mergedPhotos.some(m => m.id === def.id || m.image_url === def.image_url)) {
-            mergedPhotos.push(def);
-          }
-        });
-
-        const mergedVideos = [...localVideos, ...videos];
-        defaultVideoReviews.forEach(def => {
-          if (!mergedVideos.some(m => m.id === def.id || m.video_url === def.video_url)) {
-            mergedVideos.push(def);
-          }
-        });
-
-        setPhotoReviews(mergedPhotos);
-        setVideoReviews(mergedVideos);
+        setPhotoReviews(photos.length > 0 ? photos : defaultVerifiedReviews);
+        setVideoReviews(videos.length > 0 ? videos : defaultVideoReviews);
+      } else {
+        setPhotoReviews(defaultVerifiedReviews);
+        setVideoReviews(defaultVideoReviews);
       }
     } catch (err) {
-      console.error(err);
-      const localPhotos = JSON.parse(localStorage.getItem('casit_custom_photo_reviews') || '[]');
-      const localVideos = JSON.parse(localStorage.getItem('casit_custom_video_reviews') || '[]');
-      setPhotoReviews([...localPhotos, ...defaultVerifiedReviews]);
-      setVideoReviews([...localVideos, ...defaultVideoReviews]);
+      console.error('Reviews fetch notice:', err);
+      setPhotoReviews(defaultVerifiedReviews);
+      setVideoReviews(defaultVideoReviews);
     } finally {
       setLoading(false);
     }
@@ -224,57 +202,18 @@ export default function ManageReviews({ initialTab = 'videos' }) {
         likes: isVideo ? (likes || '4.2K') : null
       };
 
-      // 1. Save to Supabase
-      try {
-        if (editingItem && typeof editingItem.id === 'number' && editingItem.id > 100) {
-          await supabase
-            .from('verified_reviews')
-            .update(payload)
-            .eq('id', editingItem.id);
-        } else if (!editingItem) {
-          await supabase
-            .from('verified_reviews')
-            .insert([payload]);
-        }
-      } catch (dbErr) {
-        console.warn('Supabase save notice:', dbErr);
-      }
-
-      // 2. Save to LocalStorage for instant storefront synchronization with QuotaExceededError protection
-      try {
-        if (isVideo) {
-          const localVideos = JSON.parse(localStorage.getItem('casit_custom_video_reviews') || '[]');
-          const storagePayload = {
-            ...payload,
-            video_url: (payload.video_url && payload.video_url.length > 50000) ? (finalThumbnailUrl || '') : payload.video_url
-          };
-          if (editingItem) {
-            const updated = localVideos.map(v => v.id === editingItem.id ? { ...v, ...storagePayload } : v);
-            try { localStorage.setItem('casit_custom_video_reviews', JSON.stringify(updated)); } catch (_) {}
-            setVideoReviews(prev => prev.map(v => v.id === editingItem.id ? { ...v, ...payload } : v));
-          } else {
-            const newItem = { id: `custom-v-${Date.now()}`, ...payload };
-            try {
-              localStorage.setItem('casit_custom_video_reviews', JSON.stringify([newItem, ...localVideos]));
-            } catch (_) {}
-            setVideoReviews(prev => [newItem, ...prev]);
-          }
-        } else {
-          const localPhotos = JSON.parse(localStorage.getItem('casit_custom_photo_reviews') || '[]');
-          if (editingItem) {
-            const updated = localPhotos.map(p => p.id === editingItem.id ? { ...p, ...payload } : p);
-            try { localStorage.setItem('casit_custom_photo_reviews', JSON.stringify(updated)); } catch (_) {}
-            setPhotoReviews(prev => prev.map(p => p.id === editingItem.id ? { ...p, ...payload } : p));
-          } else {
-            const newItem = { id: `custom-p-${Date.now()}`, ...payload };
-            try {
-              localStorage.setItem('casit_custom_photo_reviews', JSON.stringify([newItem, ...localPhotos]));
-            } catch (_) {}
-            setPhotoReviews(prev => [newItem, ...prev]);
-          }
-        }
-      } catch (storageErr) {
-        console.warn('LocalStorage save notice:', storageErr);
+      // Save directly to Supabase Cloud DB
+      if (editingItem && typeof editingItem.id === 'number') {
+        const { error: updateErr } = await supabase
+          .from('verified_reviews')
+          .update(payload)
+          .eq('id', editingItem.id);
+        if (updateErr) throw updateErr;
+      } else {
+        const { error: insertErr } = await supabase
+          .from('verified_reviews')
+          .insert([payload]);
+        if (insertErr) throw insertErr;
       }
 
       setSuccessMsg(isVideo ? 'Customer Video Reel published successfully!' : 'Photo review published successfully!');
@@ -283,7 +222,7 @@ export default function ManageReviews({ initialTab = 'videos' }) {
         setSuccessMsg('');
       }, 1000);
       
-      fetchReviews();
+      await fetchReviews();
     } catch (err) {
       console.error(err);
       setError(err?.message || 'Failed to save review item. Please check inputs and try again.');
@@ -295,22 +234,23 @@ export default function ManageReviews({ initialTab = 'videos' }) {
   const handleDelete = async (id, isVideo) => {
     if (window.confirm(`Are you sure you want to delete this ${isVideo ? 'customer video reel' : 'photo review'}?`)) {
       try {
-        await supabase.from('verified_reviews').delete().eq('id', id);
+        if (typeof id === 'number') {
+          const { error } = await supabase.from('verified_reviews').delete().eq('id', id);
+          if (error) console.warn('Supabase delete error:', error);
+        }
       } catch (err) {
         console.warn('Supabase delete error:', err);
       }
 
       if (isVideo) {
-        const localVideos = JSON.parse(localStorage.getItem('casit_custom_video_reviews') || '[]');
-        const filtered = localVideos.filter(v => v.id !== id);
-        localStorage.setItem('casit_custom_video_reviews', JSON.stringify(filtered));
         setVideoReviews(prev => prev.filter(v => v.id !== id));
       } else {
-        const localPhotos = JSON.parse(localStorage.getItem('casit_custom_photo_reviews') || '[]');
-        const filtered = localPhotos.filter(p => p.id !== id);
-        localStorage.setItem('casit_custom_photo_reviews', JSON.stringify(filtered));
         setPhotoReviews(prev => prev.filter(p => p.id !== id));
       }
+
+      setSuccessMsg(`${isVideo ? 'Video reel' : 'Photo review'} deleted.`);
+      setTimeout(() => setSuccessMsg(''), 2500);
+      await fetchReviews();
     }
   };
 

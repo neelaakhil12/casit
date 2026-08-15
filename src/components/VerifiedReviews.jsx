@@ -202,40 +202,24 @@ export default function VerifiedReviews() {
 
   const fetchReviews = async () => {
     try {
-      const localPhotos = JSON.parse(localStorage.getItem('casit_custom_photo_reviews') || '[]');
-      const localVideos = JSON.parse(localStorage.getItem('casit_custom_video_reviews') || '[]');
-
       const { data, error } = await supabase
         .from('verified_reviews')
         .select('*')
         .order('created_at', { ascending: false });
 
-      const dbPhotos = (data || []).filter(item => !item.video_url);
-      const dbVideos = (data || []).filter(item => !!item.video_url);
-
-      // Photos merge
-      const allPhotos = [...localPhotos, ...dbPhotos];
-      defaultVerifiedReviews.forEach(def => {
-        if (!allPhotos.some(m => m.id === def.id || m.image_url === def.image_url)) {
-          allPhotos.push(def);
-        }
-      });
-      setPhotoReviews(allPhotos);
-
-      // Videos merge
-      const allVideos = [...localVideos, ...dbVideos];
-      defaultVideoReviews.forEach(def => {
-        if (!allVideos.some(m => m.id === def.id || m.video_url === def.video_url)) {
-          allVideos.push(def);
-        }
-      });
-      setVideoReviews(allVideos);
+      if (!error && data && data.length > 0) {
+        const dbPhotos = data.filter(item => !item.video_url);
+        const dbVideos = data.filter(item => !!item.video_url);
+        setPhotoReviews(dbPhotos.length > 0 ? dbPhotos : defaultVerifiedReviews);
+        setVideoReviews(dbVideos.length > 0 ? dbVideos : defaultVideoReviews);
+      } else {
+        setPhotoReviews(defaultVerifiedReviews);
+        setVideoReviews(defaultVideoReviews);
+      }
     } catch (err) {
       console.log('Using default verified reviews:', err);
-      const localPhotos = JSON.parse(localStorage.getItem('casit_custom_photo_reviews') || '[]');
-      const localVideos = JSON.parse(localStorage.getItem('casit_custom_video_reviews') || '[]');
-      setPhotoReviews([...localPhotos, ...defaultVerifiedReviews]);
-      setVideoReviews([...localVideos, ...defaultVideoReviews]);
+      setPhotoReviews(defaultVerifiedReviews);
+      setVideoReviews(defaultVideoReviews);
     }
   };
 
