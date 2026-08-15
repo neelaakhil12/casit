@@ -185,6 +185,47 @@ export const defaultVideoReviews = [
   }
 ];
 
+// Guaranteed Autoplay Video Element without static preview cover
+function ReelCardVideo({ src, isUnmuted }) {
+  const videoRef = useRef(null);
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    video.muted = !isUnmuted;
+    video.defaultMuted = true;
+    video.playsInline = true;
+    video.setAttribute('playsinline', '');
+    video.setAttribute('webkit-playsinline', '');
+
+    const startPlaying = () => {
+      const playPromise = video.play();
+      if (playPromise !== undefined) {
+        playPromise.catch(() => {
+          video.muted = true;
+          video.play().catch(() => {});
+        });
+      }
+    };
+
+    startPlaying();
+  }, [src, isUnmuted]);
+
+  return (
+    <video
+      ref={videoRef}
+      src={src}
+      autoPlay
+      loop
+      muted={!isUnmuted}
+      playsInline
+      preload="auto"
+      className="w-full h-full object-cover group-hover:scale-105 transition duration-700 bg-neutral-900"
+    />
+  );
+}
+
 export default function VerifiedReviews() {
   const [photoReviews, setPhotoReviews] = useState(defaultVerifiedReviews);
   const [videoReviews, setVideoReviews] = useState(defaultVideoReviews);
@@ -386,25 +427,10 @@ export default function VerifiedReviews() {
                   }}
                   className="group relative w-44 h-72 sm:w-56 sm:h-96 rounded-3xl overflow-hidden cursor-pointer shadow-lg hover:shadow-2xl border border-gray-200 transition-all duration-300 shrink-0 bg-neutral-900"
                 >
-                  {/* Direct Autoplay Video (Always muted by default) */}
+                  {/* Direct Autoplay Video Element */}
                   {vid.video_url ? (
-                    <video
-                      src={vid.video_url}
-                      poster={vid.thumbnail || vid.image_url}
-                      autoPlay
-                      loop
-                      muted={!isCardUnmuted}
-                      playsInline
-                      className="w-full h-full object-cover group-hover:scale-105 transition duration-700"
-                    />
-                  ) : (
-                    <img
-                      src={vid.thumbnail || vid.image_url}
-                      alt={vid.customer_name}
-                      className="w-full h-full object-cover group-hover:scale-105 transition duration-700 brightness-[0.85]"
-                      loading="lazy"
-                    />
-                  )}
+                    <ReelCardVideo src={vid.video_url} isUnmuted={isCardUnmuted} />
+                  ) : null}
 
                   {/* Video Overlay Elements */}
                   <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-transparent to-black/40 flex flex-col justify-between p-4 text-white pointer-events-none">

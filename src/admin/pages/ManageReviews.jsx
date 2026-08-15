@@ -213,23 +213,18 @@ export default function ManageReviews({ initialTab = 'videos' }) {
         return;
       }
 
-      if (!finalThumbnailUrl && !finalVideoUrl) {
-        setError('Please provide an image or video thumbnail.');
+      if (!isVideo && !finalThumbnailUrl) {
+        setError('Please provide a customer wall photo.');
         setUploading(false);
         return;
-      }
-
-      // Default thumbnail fallback for video if missing
-      if (isVideo && !finalThumbnailUrl) {
-        finalThumbnailUrl = 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=600&auto=format&fit=crop';
       }
 
       const payload = {
         customer_name: customerName || (isVideo ? 'Creator Customer' : 'Verified Buyer'),
         caption: caption || (isVideo ? 'Unboxing my awesome posters from CASIT!' : 'High quality print and premium finish.'),
         rating: Number(rating) || 5,
-        image_url: finalThumbnailUrl,
-        thumbnail: finalThumbnailUrl,
+        image_url: isVideo ? (finalVideoUrl || '') : (finalThumbnailUrl || ''),
+        thumbnail: isVideo ? (finalVideoUrl || '') : (finalThumbnailUrl || ''),
         video_url: isVideo ? finalVideoUrl : null,
         handle: isVideo ? locationOrHandle : null,
         location: !isVideo ? locationOrHandle : null,
@@ -590,42 +585,44 @@ export default function ManageReviews({ initialTab = 'videos' }) {
                 </div>
               )}
 
-              {/* COVER PHOTO / THUMBNAIL */}
-              <div className="p-4 bg-gray-50 rounded-2xl border border-gray-200 space-y-3">
-                <label className="text-xs font-extrabold text-gray-800 flex items-center gap-1.5">
-                  <ImageIcon size={16} className="text-primary" />
-                  <span>{activeTab === 'videos' ? 'Cover Thumbnail Image' : 'Wall Setup Photo *'}</span>
-                </label>
+              {/* COVER PHOTO (ONLY FOR PHOTO REVIEWS) */}
+              {activeTab === 'photos' && (
+                <div className="p-4 bg-gray-50 rounded-2xl border border-gray-200 space-y-3">
+                  <label className="text-xs font-extrabold text-gray-800 flex items-center gap-1.5">
+                    <ImageIcon size={16} className="text-primary" />
+                    <span>Wall Setup Photo *</span>
+                  </label>
 
-                <div className="flex items-center gap-4">
-                  {thumbnailUrl ? (
-                    <div className="w-20 h-28 rounded-2xl overflow-hidden border-2 border-primary shrink-0 bg-gray-100 shadow-sm">
-                      <img src={thumbnailUrl} alt="Thumbnail Preview" className="w-full h-full object-cover" />
-                    </div>
-                  ) : (
-                    <div className="w-20 h-28 rounded-2xl border-2 border-dashed border-gray-300 flex flex-col items-center justify-center text-gray-400 shrink-0 bg-white">
-                      <ImageIcon size={22} />
-                      <span className="text-[9px] mt-1">Cover</span>
-                    </div>
-                  )}
+                  <div className="flex items-center gap-4">
+                    {thumbnailUrl ? (
+                      <div className="w-20 h-28 rounded-2xl overflow-hidden border-2 border-primary shrink-0 bg-gray-100 shadow-sm">
+                        <img src={thumbnailUrl} alt="Thumbnail Preview" className="w-full h-full object-cover" />
+                      </div>
+                    ) : (
+                      <div className="w-20 h-28 rounded-2xl border-2 border-dashed border-gray-300 flex flex-col items-center justify-center text-gray-400 shrink-0 bg-white">
+                        <ImageIcon size={22} />
+                        <span className="text-[9px] mt-1">Photo</span>
+                      </div>
+                    )}
 
-                  <div className="flex-1 space-y-2">
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={handleImageFileChange}
-                      className="text-xs file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-black file:text-white hover:file:bg-neutral-800 cursor-pointer"
-                    />
-                    <input
-                      type="text"
-                      placeholder="Or enter cover image URL directly..."
-                      value={thumbnailUrl}
-                      onChange={(e) => setThumbnailUrl(e.target.value)}
-                      className="w-full text-xs p-2.5 bg-white border border-gray-200 rounded-xl outline-none focus:ring-1 focus:ring-black"
-                    />
+                    <div className="flex-1 space-y-2">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleImageFileChange}
+                        className="text-xs file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-black file:text-white hover:file:bg-neutral-800 cursor-pointer"
+                      />
+                      <input
+                        type="text"
+                        placeholder="Or enter photo image URL directly..."
+                        value={thumbnailUrl}
+                        onChange={(e) => setThumbnailUrl(e.target.value)}
+                        className="w-full text-xs p-2.5 bg-white border border-gray-200 rounded-xl outline-none focus:ring-1 focus:ring-black"
+                      />
+                    </div>
                   </div>
                 </div>
-              </div>
+              )}
 
               {/* CUSTOMER INFO */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
