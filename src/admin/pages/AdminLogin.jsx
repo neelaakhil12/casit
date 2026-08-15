@@ -15,7 +15,6 @@ export default function AdminLogin({ onLogin }) {
   const [resetLoading, setResetLoading] = useState(false);
   const [resetError, setResetError] = useState('');
   const [resetSuccess, setResetSuccess] = useState('');
-  const [directResetOption, setDirectResetOption] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -41,45 +40,53 @@ export default function AdminLogin({ onLogin }) {
 
         if (res.ok) {
           const data = await res.json();
-          if (data.success) {
-            onLogin();
+          if (data.success && data.token) {
+            onLogin(data.token, data.admin);
             return;
           }
         }
-      } catch (serverErr) {
-        console.warn('Backend server offline or unreachable, using database auth:', serverErr);
+      } catch (backendErr) {
+        console.warn('Backend server offline, trying Supabase DB:', backendErr);
       }
 
-      // 2. Direct Supabase Admin Auth Check
-      try {
-        const { data, error: dbError } = await supabase
-          .from('admin_users')
-          .select('*')
-          .eq('email', cleanEmail)
-          .single();
+      // 2. Direct Supabase Query fallback
+      const { data: adminRows, error: dbError } = await supabase
+        .from('admin_users')
+        .select('*')
+        .eq('email', cleanEmail)
+        .limit(1);
 
-        if (!dbError && data && data.password === cleanPass) {
-          onLogin();
+      if (!dbError && adminRows && adminRows.length > 0) {
+        const admin = adminRows[0];
+        if (admin.password === cleanPass) {
+          onLogin(`admin-session-${Date.now()}`, {
+            id: admin.id,
+            email: admin.email,
+            name: admin.name || 'Admin',
+            role: admin.role || 'superadmin'
+          });
+          return;
+        } else {
+          setError('Incorrect password. Please try again or use Forgot Password.');
           return;
         }
-      } catch (dbErr) {
-        console.warn('Supabase auth fallback:', dbErr);
       }
 
-      // 3. Fallback default credentials or locally stored reset password
-      const savedPass = localStorage.getItem('admin_custom_password');
-      if (
-        (cleanEmail === 'casithelpline@gmail.com' || cleanEmail === 'admin@casit.com') &&
-        (cleanPass === 'admin123' || cleanPass === 'admin' || (savedPass && cleanPass === savedPass))
-      ) {
-        onLogin();
-        return;
+      // 3. Fallback to locally updated password or default
+      const customPass = localStorage.getItem('admin_custom_password') || 'admin123';
+      if (cleanEmail === 'casithelpline@gmail.com' && cleanPass === customPass) {
+        onLogin('default-admin-token', {
+          id: 'admin-1',
+          email: 'casithelpline@gmail.com',
+          name: 'CASIT Admin',
+          role: 'superadmin'
+        });
+      } else {
+        setError('Invalid admin credentials. Please try again.');
       }
-
-      setError('Invalid email or password. Default password is: admin123');
     } catch (err) {
       console.error(err);
-      setError('Authentication failed. Default password is: admin123');
+      setError('Authentication failed. Please check your credentials.');
     } finally {
       setLoading(false);
     }
@@ -95,7 +102,6 @@ export default function AdminLogin({ onLogin }) {
     setResetLoading(true);
     setResetError('');
     setResetSuccess('');
-    setDirectResetOption(false);
 
     try {
       const res = await fetch('/api/admin/forgot-password', {
@@ -112,12 +118,10 @@ export default function AdminLogin({ onLogin }) {
         setResetSuccess(`Password reset link sent to ${resetEmail.trim()}! Check your inbox.`);
       } else {
         setResetError(data.message || 'Failed to send reset link.');
-        setDirectResetOption(true);
       }
     } catch (err) {
-      console.warn('SMTP server offline, offering direct reset option:', err);
-      setResetSuccess(`Email service offline. You can reset your admin password directly:`);
-      setDirectResetOption(true);
+      console.error('Error sending reset link:', err);
+      setResetError('Unable to send reset email. Please ensure the email service is reachable.');
     } finally {
       setResetLoading(false);
     }
@@ -142,47 +146,51 @@ export default function AdminLogin({ onLogin }) {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">
+            <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
               Admin Email
             </label>
             <div className="relative">
-              <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400">
-                <Mail size={18} />
+              <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-400">
+                <Mail size={16} />
               </span>
               <input
                 type="email"
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl text-sm font-semibold focus:ring-2 focus:ring-primary outline-none transition-shadow"
+                className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl text-sm font-semibold focus:ring-2 focus:ring-primary focus:bg-white outline-none"
                 placeholder="casithelpline@gmail.com"
               />
             </div>
           </div>
 
           <div>
-            <div className="flex items-center justify-between mb-1">
+            <div className="flex items-center justify-between mb-1.5">
               <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider">
                 Password
               </label>
               <button
                 type="button"
-                onClick={() => { setShowForgotModal(true); setResetError(''); setResetSuccess(''); }}
-                className="text-xs font-bold text-black hover:underline"
+                onClick={() => {
+                  setShowForgotModal(true);
+                  setResetError('');
+                  setResetSuccess('');
+                }}
+                className="text-xs text-gray-500 hover:text-black font-bold transition underline"
               >
-                Forgot Password?
+                Forgot?
               </button>
             </div>
             <div className="relative">
-              <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400">
-                <Lock size={18} />
+              <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-400">
+                <KeyRound size={16} />
               </span>
               <input
                 type="password"
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl text-sm font-semibold focus:ring-2 focus:ring-primary outline-none transition-shadow"
+                className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl text-sm font-semibold focus:ring-2 focus:ring-primary focus:bg-white outline-none"
                 placeholder="••••••••"
               />
             </div>
@@ -191,43 +199,61 @@ export default function AdminLogin({ onLogin }) {
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-primary text-black font-bold p-3.5 rounded-xl shadow-yellow-glow hover:bg-primary-hover transition-colors text-sm mt-2 flex items-center justify-center gap-2 disabled:opacity-50"
+            className="w-full py-3.5 bg-primary text-black font-bold rounded-2xl shadow-yellow-glow hover:bg-primary-hover transition text-sm flex items-center justify-center gap-2 mt-2 disabled:opacity-50"
           >
-            {loading ? 'Authenticating...' : 'Sign In'}
+            {loading ? (
+              <>
+                <div className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin" />
+                <span>Verifying...</span>
+              </>
+            ) : (
+              <>
+                <span>Sign In to Dashboard</span>
+                <ArrowRight size={16} />
+              </>
+            )}
           </button>
         </form>
+
+        <div className="mt-8 text-center border-t border-gray-100 pt-6">
+          <p className="text-xs text-gray-400">CASIT Store Management System &copy; {new Date().getFullYear()}</p>
+        </div>
       </div>
 
-      {/* FORGOT PASSWORD MODAL */}
+      {/* ── FORGOT PASSWORD MODAL ── */}
       {showForgotModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
-          <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl relative space-y-4 border border-gray-100">
-            <button 
-              onClick={() => setShowForgotModal(false)}
-              className="absolute top-4 right-4 p-1.5 rounded-full bg-gray-100 hover:bg-gray-200 transition"
-            >
-              <X size={18} />
-            </button>
-
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 bg-primary/20 text-black rounded-2xl flex items-center justify-center">
-                <KeyRound size={24} />
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl border border-gray-100 space-y-5 animate-fade-in-up">
+            
+            <div className="flex items-center justify-between pb-2 border-b border-gray-100">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-primary/20 text-black rounded-2xl flex items-center justify-center">
+                  <KeyRound size={20} />
+                </div>
+                <div>
+                  <h3 className="text-lg font-black text-gray-900">Forgot Password?</h3>
+                  <p className="text-xs text-gray-500 font-medium">Send a reset password link to your email</p>
+                </div>
               </div>
-              <div>
-                <h3 className="text-xl font-bold text-gray-900">Forgot Password?</h3>
-                <p className="text-xs text-gray-500 font-medium">Send a reset password link via Nodemailer SMTP</p>
-              </div>
+              <button 
+                onClick={() => setShowForgotModal(false)}
+                className="p-2 text-gray-400 hover:text-black hover:bg-gray-100 rounded-full transition"
+              >
+                <X size={18} />
+              </button>
             </div>
 
             {resetError && (
-              <div className="bg-red-50 border border-red-200 text-red-700 text-xs font-semibold p-3 rounded-xl text-center">
-                {resetError}
+              <div className="p-3.5 bg-red-50 border border-red-200 text-red-700 text-xs font-semibold rounded-2xl flex items-center gap-2">
+                <AlertCircle size={15} className="shrink-0" />
+                <span>{resetError}</span>
               </div>
             )}
 
             {resetSuccess && (
-              <div className="bg-green-50 border border-green-200 text-green-700 text-xs font-bold p-3 rounded-xl text-center">
-                {resetSuccess}
+              <div className="p-4 bg-green-50 border border-green-200 text-green-800 text-xs font-bold rounded-2xl flex items-start gap-2 leading-relaxed">
+                <CheckCircle size={16} className="shrink-0 text-green-600 mt-0.5" />
+                <span>{resetSuccess}</span>
               </div>
             )}
 
@@ -258,17 +284,6 @@ export default function AdminLogin({ onLogin }) {
                   </>
                 )}
               </button>
-
-              {directResetOption && (
-                <div className="pt-2">
-                  <a
-                    href={`/admin/reset-password?email=${encodeURIComponent(resetEmail)}`}
-                    className="w-full py-3 bg-black text-white font-bold rounded-2xl hover:bg-neutral-800 transition text-xs flex items-center justify-center gap-2"
-                  >
-                    <span>Click Here to Reset Password Now &rarr;</span>
-                  </a>
-                </div>
-              )}
             </form>
           </div>
         </div>
@@ -276,4 +291,3 @@ export default function AdminLogin({ onLogin }) {
     </div>
   );
 }
-
