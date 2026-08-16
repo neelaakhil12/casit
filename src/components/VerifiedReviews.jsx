@@ -19,7 +19,9 @@ import {
 export const defaultVerifiedReviews = [];
 export const defaultVideoReviews = [];
 
-// Guaranteed Autoplay Video Element without static preview cover
+const FALLBACK_PHOTO = 'https://images.unsplash.com/photo-1513519245088-0e12902e5a38?q=80&w=600&auto=format&fit=crop';
+
+// Guaranteed Autoplay Video Element with robust error and loading handling
 function ReelCardVideo({ src, isUnmuted }) {
   const videoRef = useRef(null);
 
@@ -34,9 +36,11 @@ function ReelCardVideo({ src, isUnmuted }) {
     try {
       video.setAttribute('playsinline', '');
       video.setAttribute('webkit-playsinline', '');
+      video.setAttribute('muted', '');
     } catch (_) {}
 
-    const startPlaying = () => {
+    const playVideo = () => {
+      if (!video) return;
       try {
         const playPromise = video.play();
         if (playPromise !== undefined && typeof playPromise.catch === 'function') {
@@ -50,7 +54,19 @@ function ReelCardVideo({ src, isUnmuted }) {
       } catch (_) {}
     };
 
-    startPlaying();
+    if (video.readyState >= 2) {
+      playVideo();
+    } else {
+      video.addEventListener('loadeddata', playVideo, { once: true });
+      video.addEventListener('canplay', playVideo, { once: true });
+    }
+
+    return () => {
+      if (video) {
+        video.removeEventListener('loadeddata', playVideo);
+        video.removeEventListener('canplay', playVideo);
+      }
+    };
   }, [src, isUnmuted]);
 
   if (!src) return null;
@@ -63,7 +79,7 @@ function ReelCardVideo({ src, isUnmuted }) {
       loop
       muted={!isUnmuted}
       playsInline
-      preload="metadata"
+      preload="auto"
       className="w-full h-full object-cover group-hover:scale-105 transition duration-700 bg-neutral-900"
     />
   );
@@ -105,8 +121,19 @@ export default function VerifiedReviews() {
         .order('created_at', { ascending: false });
 
       if (!error && Array.isArray(data)) {
-        const dbPhotos = data.filter(item => item && !item.video_url && (item.image_url || item.thumbnail));
-        const dbVideos = data.filter(item => item && item.video_url);
+        // Filter out any broken local blob URLs
+        const dbPhotos = data.filter(item => 
+          item && 
+          !item.video_url && 
+          (item.image_url || item.thumbnail) &&
+          !item.image_url?.startsWith('blob:') &&
+          !item.thumbnail?.startsWith('blob:')
+        );
+        const dbVideos = data.filter(item => 
+          item && 
+          item.video_url &&
+          !item.video_url?.startsWith('blob:')
+        );
         setPhotoReviews(dbPhotos);
         setVideoReviews(dbVideos);
       } else {
@@ -131,7 +158,7 @@ export default function VerifiedReviews() {
   }
 
   // Helper to ensure enough cards for continuous seamless marquee
-  const duplicateForMarquee = (arr, minCount = 8) => {
+  const duplicateForMarquee = (arr, minCount = 6) => {
     if (!arr || arr.length === 0) return [];
     let result = [...arr];
     while (result.length < minCount) {
@@ -147,7 +174,7 @@ export default function VerifiedReviews() {
 
   const row1Duplicated = duplicateForMarquee(row1Raw, 6);
   const row2Duplicated = duplicateForMarquee(row2Raw, 6);
-  const videosDuplicated = duplicateForMarquee(safeVideos, 6);
+  const videosDuplicated = duplicateForMarquee(safeVideos, 4);
 
   const handleTogglePlay = () => {
     if (modalVideoRef.current) {
@@ -207,8 +234,12 @@ export default function VerifiedReviews() {
                     className="group relative w-36 h-48 sm:w-56 sm:h-72 rounded-2xl sm:rounded-3xl overflow-hidden cursor-pointer shadow-md hover:shadow-2xl border border-gray-100 transition-all duration-300 shrink-0 bg-gray-100"
                   >
                     <img
-                      src={review.image_url || review.thumbnail}
+                      src={review.image_url || review.thumbnail || FALLBACK_PHOTO}
                       alt={review.customer_name || 'Verified Customer Review'}
+                      onError={(e) => {
+                        e.target.onerror = null;
+                        e.target.src = FALLBACK_PHOTO;
+                      }}
                       className="w-full h-full object-cover group-hover:scale-110 transition duration-500"
                       loading="lazy"
                     />
@@ -238,8 +269,12 @@ export default function VerifiedReviews() {
                     className="group relative w-36 h-48 sm:w-56 sm:h-72 rounded-2xl sm:rounded-3xl overflow-hidden cursor-pointer shadow-md hover:shadow-2xl border border-gray-100 transition-all duration-300 shrink-0 bg-gray-100"
                   >
                     <img
-                      src={review.image_url || review.thumbnail}
+                      src={review.image_url || review.thumbnail || FALLBACK_PHOTO}
                       alt={review.customer_name || 'Verified Customer Review'}
+                      onError={(e) => {
+                        e.target.onerror = null;
+                        e.target.src = FALLBACK_PHOTO;
+                      }}
                       className="w-full h-full object-cover group-hover:scale-110 transition duration-500"
                       loading="lazy"
                     />
@@ -308,7 +343,7 @@ export default function VerifiedReviews() {
                     {/* Top Bar: Views & Sound Unmute Button */}
                     <div className="flex items-center justify-between pointer-events-auto">
                       <span className="text-[10px] bg-black/60 backdrop-blur-md px-2.5 py-1 rounded-full font-bold flex items-center gap-1">
-                        <Play size={10} fill="currentColor" /> {vid.views}
+                        <Play size={10} fill="currentColor" /> {vid.views || '45K'}
                       </span>
                       <button
                         type="button"
@@ -373,8 +408,12 @@ export default function VerifiedReviews() {
 
             <div className="max-h-[65vh] overflow-hidden bg-black flex items-center justify-center">
               <img
-                src={activePhotoModal.image_url}
+                src={activePhotoModal.image_url || activePhotoModal.thumbnail || FALLBACK_PHOTO}
                 alt={activePhotoModal.customer_name}
+                onError={(e) => {
+                  e.target.onerror = null;
+                  e.target.src = FALLBACK_PHOTO;
+                }}
                 className="w-full h-auto max-h-[65vh] object-contain"
               />
             </div>

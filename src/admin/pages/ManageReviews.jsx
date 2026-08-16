@@ -149,41 +149,34 @@ export default function ManageReviews({ initialTab = 'videos' }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setUploading(true);
-    setUploadProgress(0);
+    setUploadProgress(10);
     setError('');
 
     try {
-      let finalThumbnailUrl = thumbnailUrl;
-      let finalVideoUrl = videoUrl;
+      const isVideo = activeTab === 'videos';
+      let finalThumbnailUrl = (thumbnailUrl && !thumbnailUrl.startsWith('blob:')) ? thumbnailUrl : '';
+      let finalVideoUrl = (videoUrl && !videoUrl.startsWith('blob:')) ? videoUrl : '';
 
       // Upload Cover Thumbnail if file selected
       if (imageFile) {
-        try {
-          finalThumbnailUrl = await uploadImageToCloudinary(imageFile, (p) => setUploadProgress(p));
-        } catch (uploadErr) {
-          console.warn('Image upload fallback:', uploadErr);
-        }
+        setUploadProgress(25);
+        finalThumbnailUrl = await uploadImageToCloudinary(imageFile, (p) => setUploadProgress(p));
       }
 
       // Upload Video if file selected
       if (videoFile) {
-        try {
-          finalVideoUrl = await uploadVideoToCloudinary(videoFile, (p) => setUploadProgress(p));
-        } catch (uploadErr) {
-          console.warn('Video upload fallback:', uploadErr);
-        }
+        setUploadProgress(25);
+        finalVideoUrl = await uploadVideoToCloudinary(videoFile, (p) => setUploadProgress(p));
       }
 
-      const isVideo = activeTab === 'videos';
-
-      if (isVideo && !finalVideoUrl) {
-        setError('Please upload a video file or enter a valid video stream URL.');
+      if (isVideo && (!finalVideoUrl || finalVideoUrl.startsWith('blob:'))) {
+        setError('Please upload a valid video file or enter a valid video link.');
         setUploading(false);
         return;
       }
 
-      if (!isVideo && !finalThumbnailUrl) {
-        setError('Please provide a customer wall photo.');
+      if (!isVideo && (!finalThumbnailUrl || finalThumbnailUrl.startsWith('blob:'))) {
+        setError('Please upload a wall setup photo or enter a valid photo URL.');
         setUploading(false);
         return;
       }
@@ -192,8 +185,8 @@ export default function ManageReviews({ initialTab = 'videos' }) {
         customer_name: customerName || (isVideo ? 'Creator Customer' : 'Verified Buyer'),
         caption: caption || (isVideo ? 'Unboxing my awesome posters from CASIT!' : 'High quality print and premium finish.'),
         rating: Number(rating) || 5,
-        image_url: isVideo ? (finalVideoUrl || '') : (finalThumbnailUrl || ''),
-        thumbnail: isVideo ? (finalVideoUrl || '') : (finalThumbnailUrl || ''),
+        image_url: isVideo ? (finalThumbnailUrl || finalVideoUrl || '') : (finalThumbnailUrl || ''),
+        thumbnail: isVideo ? (finalThumbnailUrl || finalVideoUrl || '') : (finalThumbnailUrl || ''),
         video_url: isVideo ? finalVideoUrl : null,
         handle: isVideo ? locationOrHandle : null,
         location: !isVideo ? locationOrHandle : null,
@@ -201,6 +194,8 @@ export default function ManageReviews({ initialTab = 'videos' }) {
         views: isVideo ? (views || '50K') : null,
         likes: isVideo ? (likes || '4.2K') : null
       };
+
+      setUploadProgress(95);
 
       // Save directly to Supabase Cloud DB
       if (editingItem && typeof editingItem.id === 'number') {
@@ -216,6 +211,7 @@ export default function ManageReviews({ initialTab = 'videos' }) {
         if (insertErr) throw insertErr;
       }
 
+      setUploadProgress(100);
       setSuccessMsg(isVideo ? 'Customer Video Reel published successfully!' : 'Photo review published successfully!');
       setTimeout(() => {
         setIsModalOpen(false);
@@ -322,16 +318,30 @@ export default function ManageReviews({ initialTab = 'videos' }) {
                 key={vid.id}
                 className="group relative bg-white border border-gray-200 rounded-3xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col"
               >
-                {/* 9:16 Reel Thumbnail */}
+                {/* 9:16 Reel Thumbnail / Video Preview */}
                 <div 
                   className="relative aspect-[9/16] bg-neutral-900 overflow-hidden cursor-pointer"
                   onClick={() => setPreviewVideo(vid)}
                 >
-                  <img
-                    src={vid.thumbnail || vid.image_url}
-                    alt={vid.customer_name}
-                    className="w-full h-full object-cover group-hover:scale-105 transition duration-500 brightness-90"
-                  />
+                  {vid.video_url ? (
+                    <video
+                      src={vid.video_url}
+                      muted
+                      preload="metadata"
+                      playsInline
+                      className="w-full h-full object-cover group-hover:scale-105 transition duration-500 brightness-90"
+                    />
+                  ) : (
+                    <img
+                      src={vid.thumbnail || vid.image_url}
+                      alt={vid.customer_name}
+                      onError={(e) => {
+                        e.target.onerror = null;
+                        e.target.src = 'https://images.unsplash.com/photo-1579783902614-a3fb3927b675?q=80&w=600&auto=format&fit=crop';
+                      }}
+                      className="w-full h-full object-cover group-hover:scale-105 transition duration-500 brightness-90"
+                    />
+                  )}
                   
                   {/* Reel Overlays */}
                   <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-black/40 flex flex-col justify-between p-3.5">
@@ -412,8 +422,12 @@ export default function ManageReviews({ initialTab = 'videos' }) {
             >
               <div className="relative aspect-[3/4] bg-gray-100 overflow-hidden">
                 <img
-                  src={review.image_url}
+                  src={review.image_url || review.thumbnail}
                   alt={review.customer_name || 'Review'}
+                  onError={(e) => {
+                    e.target.onerror = null;
+                    e.target.src = 'https://images.unsplash.com/photo-1513519245088-0e12902e5a38?q=80&w=600&auto=format&fit=crop';
+                  }}
                   className="w-full h-full object-cover group-hover:scale-105 transition duration-500"
                 />
                 <div className="absolute top-2 right-2 flex items-center gap-1 bg-black/70 backdrop-blur-xs text-white px-2 py-0.5 rounded-full text-[10px] font-bold">
@@ -562,7 +576,15 @@ export default function ManageReviews({ initialTab = 'videos' }) {
                   <div className="flex items-center gap-4">
                     {thumbnailUrl ? (
                       <div className="w-20 h-28 rounded-2xl overflow-hidden border-2 border-primary shrink-0 bg-gray-100 shadow-sm">
-                        <img src={thumbnailUrl} alt="Thumbnail Preview" className="w-full h-full object-cover" />
+                        <img 
+                          src={thumbnailUrl} 
+                          alt="Thumbnail Preview" 
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            e.target.onerror = null;
+                            e.target.src = 'https://images.unsplash.com/photo-1513519245088-0e12902e5a38?q=80&w=600&auto=format&fit=crop';
+                          }}
+                        />
                       </div>
                     ) : (
                       <div className="w-20 h-28 rounded-2xl border-2 border-dashed border-gray-300 flex flex-col items-center justify-center text-gray-400 shrink-0 bg-white">
@@ -676,7 +698,7 @@ export default function ManageReviews({ initialTab = 'videos' }) {
                   <div className="flex items-center justify-between text-xs font-bold text-gray-800">
                     <span className="flex items-center gap-1.5">
                       <div className="w-3.5 h-3.5 border-2 border-amber-600 border-t-transparent rounded-full animate-spin"></div>
-                      <span>{uploadProgress >= 95 ? 'Finalizing & Saving to Database...' : 'Uploading media to Cloudinary...'}</span>
+                      <span>{uploadProgress >= 95 ? 'Finalizing & Saving to Database...' : `Uploading media (${uploadProgress}%)...`}</span>
                     </span>
                     <span className="text-amber-700 font-extrabold">{uploadProgress}%</span>
                   </div>
