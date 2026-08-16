@@ -71,14 +71,9 @@ export default function ManageCategories() {
 
     try {
       let finalImageUrl = imageUrlInput.trim() || (editingCategory ? editingCategory.image_url : null);
-      
+
       if (imageFile) {
-        try {
-          finalImageUrl = await uploadImageToCloudinary(imageFile);
-        } catch (uploadErr) {
-          console.warn('Cloudinary upload failed, falling back to local preview URL:', uploadErr);
-          finalImageUrl = URL.createObjectURL(imageFile);
-        }
+        finalImageUrl = await uploadImageToCloudinary(imageFile);
       }
 
       if (editingCategory) {
@@ -93,14 +88,9 @@ export default function ManageCategories() {
         if (dbError) throw dbError;
         setSuccessMsg(`Category "${name}" updated successfully!`);
       } else {
-        const baseSlug = name.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-') || 'cat';
-        const isDuplicate = categories.some(c => c.id === baseSlug);
-        const catId = isDuplicate ? `${baseSlug}-${Date.now().toString().slice(-4)}` : baseSlug;
-
         const { error: dbError } = await supabase
           .from('categories')
-          .upsert([{ 
-            id: catId, 
+          .insert([{ 
             name: name.trim(), 
             image_url: finalImageUrl 
           }]);
