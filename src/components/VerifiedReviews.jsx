@@ -73,11 +73,12 @@ export default function VerifiedReviews() {
   const [photoReviews, setPhotoReviews] = useState([]);
   const [videoReviews, setVideoReviews] = useState([]);
   
-  // Modals
+  // Modals & Sound
   const [activePhotoModal, setActivePhotoModal] = useState(null);
   const [activeVideoModal, setActiveVideoModal] = useState(null);
   const [isPlaying, setIsPlaying] = useState(true);
   const [isMuted, setIsMuted] = useState(false);
+  const [unmutedCardId, setUnmutedCardId] = useState(null);
   const modalVideoRef = useRef(null);
 
   useEffect(() => {
@@ -128,9 +129,6 @@ export default function VerifiedReviews() {
   if (!hasPhotos && !hasVideos) {
     return null;
   }
-
-  // Sound state for individual cards in the feed
-  const [unmutedCardId, setUnmutedCardId] = useState(null);
 
   // Helper to ensure enough cards for continuous seamless marquee
   const duplicateForMarquee = (arr, minCount = 8) => {
